@@ -121,3 +121,19 @@ jobs:
             nuttx/nuttx.bin
             nuttx/nuttx
           retention-days: 7
+
+      - name: Summary
+        run: |
+          echo "=== D13x Firmware Build completed ==="
+          echo "Firmware: vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img"
+          echo ""
+          echo "=== Burning Instructions ==="
+          echo "1. Enter burn mode: Hold BOOT button + plug Type-C USB"
+          echo "2. Launch AiBurn: wine ~/.wine/drive_c/ArtInChip/AiBurn/AiBurn.exe"
+          echo "3. Select '烧写镜像' tab"
+          echo "4. Select the .img file"
+          echo "5. Click '开始' to burn"
+          echo ""
+          echo "=== Device Detection ==="
+          echo "lsusb | grep -i artinchip"
+          echo "# Should show: ID 33c3:6677 Artinchip Artinchip Device"
