@@ -1,0 +1,15 @@
+#
+# D13x Hengshan Pi 板级配置
+#
+
+if ARCH_BOARD_CUSTOM
+
+comment "D13x Hengshan Pi Configuration Options"
+
+config ARCH_BOARD_D13X_HENGSHAN_PI
+    bool "D13x Hengshan Pi (D133EBS)"
+    default y
+    ---help---
+        D13x Hengshan Pi development board with D133EBS chip
+
+endif # ARCH_BOARD_CUSTOM

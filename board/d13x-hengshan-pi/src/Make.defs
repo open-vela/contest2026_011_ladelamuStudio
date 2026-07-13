@@ -1,0 +1,18 @@
+#############################################################################
+# vendor/artinchip/boards/d13x-hengshan-pi/src/Make.defs
+#
+# D13x Hengshan Pi 板级编译配置
+#
+#############################################################################
+
+include $(TOPDIR)/Make.defs
+
+CSRCS = artinchip_boot.c
+
+ifeq ($(CONFIG_BOARDCTL),y)
+  CSRCS += artinchip_appinit.c
+endif
+
+DEPPATH += --dep-path board
+VPATH += :board
+CFLAGS += ${INCDIR_PREFIX}$(TOPDIR)$(DELIM)arch$(DELIM)$(CONFIG_ARCH)$(DELIM)src$(DELIM)board$(DELIM)board
