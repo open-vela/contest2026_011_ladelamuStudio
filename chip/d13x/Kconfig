@@ -1,0 +1,80 @@
+#
+# D13x 芯片配置
+#
+
+if ARCH_CHIP_CUSTOM
+
+comment "D13x Configuration Options"
+
+choice
+    prompt "D13x Chip Selection"
+    default ARCH_CHIP_D133EBS
+
+config ARCH_CHIP_D133EBS
+    bool "D133EBS (1MB SRAM, 8MB PSRAM, QFN100)"
+    select ARCH_RV32
+    select ARCH_RV_ISA_M
+    select ARCH_RV_ISA_A
+    select ARCH_HAVE_FPU
+    select ARCH_FPU
+    select ARCH_HAVE_DPFPU
+    select ARCH_DPFPU
+    select ARCH_RV_ISA_C
+    select ONESHOT
+    select ONESHOT_COUNT
+    select LIBC_ATOMIC_IRQ
+    ---help---
+        D133EBS: RISC-V E907 @ 480MHz, 1MB SRAM, 8MB PSRAM, QFN100
+
+endchoice
+
+config D13X_UART0
+    bool "UART0 Support"
+    default y
+    select UART0_SERIALDRIVER
+    select ARCH_HAVE_SERIAL_TERMIOS
+    ---help---
+        Enable UART0 driver support
+
+config D13X_UART0_DIAGNOSTIC
+    bool "UART0 receive path diagnostic"
+    depends on D13X_UART0
+    default n
+    ---help---
+        Enable a bounded UART0 loopback test and change-driven PA1/RX status
+        reports.  This is intended for board bring-up images only.
+
+config D13X_I2C
+    bool "I2C bus support"
+    select I2C
+    select I2C_DRIVER
+
+if D13X_I2C
+
+config D13X_I2C0
+    bool "I2C0 bus"
+
+config D13X_I2C1
+    bool "I2C1 bus"
+
+config D13X_I2C2
+    bool "I2C2 bus"
+
+endif
+
+config D13X_TOUCH
+    bool "Capacitive touch support"
+
+config D13X_TOUCH_GT911
+    bool "GT911 touch controller"
+    depends on D13X_TOUCH && D13X_I2C2
+    select INPUT
+    select INPUT_TOUCHSCREEN
+    select INPUT_GT9XX
+
+config D13X_DISPLAY
+    bool "LVDS display support"
+    select DRIVERS_VIDEO
+    select VIDEO_FB
+
+endif # ARCH_CHIP_CUSTOM

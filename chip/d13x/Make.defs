@@ -1,0 +1,35 @@
+############################################################################
+# vendor/artinchip/chips/d13x/Make.defs
+#
+# D13x 芯片层编译配置
+############################################################################
+
+# 包含 RISC-V 公共 Make.defs (提供 g_interrupt_context, up_exit, riscv_doirq 等)
+
+include common/Make.defs
+
+# 指定芯片层源文件
+
+HEAD_ASRC = d13x_head.S
+CHIP_CSRCS += artinchip_start.c
+CHIP_CSRCS += artinchip_irq.c
+CHIP_CSRCS += artinchip_lowputc.c
+CHIP_CSRCS += artinchip_uart.c
+CHIP_CSRCS += artinchip_oneshot.c
+CHIP_CSRCS += artinchip_allocateheap.c
+
+ifeq ($(CONFIG_D13X_I2C),y)
+  CHIP_CSRCS += artinchip_i2c.c
+endif
+
+ifeq ($(CONFIG_D13X_DISPLAY),y)
+  CHIP_CSRCS += artinchip_fb.c
+  CHIP_CSRCS += artinchip_de.c
+  CHIP_CSRCS += artinchip_lvds.c
+  CHIP_CSRCS += artinchip_panel.c
+endif
+
+# 指定芯片层头文件路径
+
+CHIP_CSRCDIR += $(VENDOR_DIR)/chips/d13x
+CHIP_INCDIR += $(VENDOR_DIR)/chips/d13x/include

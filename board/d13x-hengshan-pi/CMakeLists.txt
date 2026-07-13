@@ -1,5 +1,5 @@
-# D13x Hengshan Pi 板级 CMakeLists.txt
+# Board-level CMakeLists.txt for D13x Hengshan Pi
 
-if(CONFIG_ARCH_BOARD_D13X_HENGSHAN_PI)
-  add_subdirectory(src)
-endif()
+add_subdirectory(src)
+
+set_property(GLOBAL PROPERTY LD_SCRIPT ${NUTTX_BOARD_ABS_DIR}/scripts/ld.script)

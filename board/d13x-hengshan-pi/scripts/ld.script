@@ -2,19 +2,20 @@
  * vendor/artinchip/boards/d13x-hengshan-pi/scripts/ld.script
  *
  * D13x Hengshan Pi 链接脚本
+ * 地址来源: luban-lite aic_soc.h + D13x User Manual
  *
  ****************************************************************************/
 
 MEMORY
 {
-  flash (rx)  : ORIGIN = 0x00000000, LENGTH = 16M
-  sram (rwx)  : ORIGIN = 0x20000000, LENGTH = 1M
-  psram (rwx) : ORIGIN = 0x30000000, LENGTH = 8M
+  /* Match luban-lite: the final 0x100 bytes of SRAM_S0 are reserved. */
+
+  sram (rwx)  : ORIGIN = 0x30040000, LENGTH = 0x0fff00
+  psram (rwx) : ORIGIN = 0x40000000, LENGTH = 8M
 }
 
 OUTPUT_ARCH(riscv)
-EXTERN(_vectors)
-ENTRY(_stext)
+ENTRY(__start)
 
 SECTIONS
 {
@@ -24,52 +25,57 @@ SECTIONS
         *(.text .text.*)
         *(.fixup)
         *(.gnu.warning)
-        *(.rodata .rodata.*)
+        *(.rodata .rodata.* .srodata .srodata.*)
         *(.gnu.linkonce.t.*)
         *(.got)
-        *(.gcc_except_table)
+        *(.gcc_except_table .gcc_except_table.*)
+        *(.eh_frame .eh_frame.*)
         *(.gnu.linkonce.r.*)
         _etext = ABSOLUTE(.);
-    } > flash
+    } > sram
 
     .init_section : {
         _sinit = ABSOLUTE(.);
         KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
         KEEP(*(.init_array EXCLUDE_FILE(*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o) .ctors))
         _einit = ABSOLUTE(.);
-    } > flash
+    } > sram
 
     .tdata : {
         _stdata = ABSOLUTE(.);
         *(.tdata .tdata.* .gnu.linkonce.td.*);
         _etdata = ABSOLUTE(.);
-    } > flash
+    } > sram
 
     .tbss : {
         _stbss = ABSOLUTE(.);
         *(.tbss .tbss.* .gnu.linkonce.tb.* .tcommon);
         _etbss = ABSOLUTE(.);
-    } > flash
+    } > sram
 
     _eronly = ABSOLUTE(.);
 
     .data : {
         _sdata = ABSOLUTE(.);
-        *(.data .data.*)
+        *(.data .data.* .sdata .sdata.*)
         *(.gnu.linkonce.d.*)
         CONSTRUCTORS
         . = ALIGN(4);
         _edata = ABSOLUTE(.);
-    } > sram AT > flash
+    } > sram
 
     .bss : {
         _sbss = ABSOLUTE(.);
-        *(.bss .bss.*)
+        *(.bss .bss.* .sbss .sbss.*)
         *(.gnu.linkonce.b.*)
         *(COMMON)
         . = ALIGN(4);
         _ebss = ABSOLUTE(.);
     } > sram
+
+    /* GP 寄存器符号 (来源: luban-lite) */
+
+    PROVIDE(__global_pointer$ = _sdata + 0x800);
 
     /* 调试段 */
 

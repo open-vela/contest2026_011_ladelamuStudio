@@ -1,7 +1,7 @@
 /****************************************************************************
- * vendor/artinchip/boards/d13x-hengshan-pi/src/artinchip_boot.c
+ * vendor/artinchip/chips/d13x/artinchip_lowputc.c
  *
- * D13x Hengshan Pi 板级启动初始化
+ * D13x 低级串口输出
  *
  ****************************************************************************/
 
@@ -10,42 +10,43 @@
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/compiler.h>
-#include <nuttx/board.h>
-#include <arch/board/board.h>
-
-#include "artinchip_bringup.h"
+#include <nuttx/arch.h>
+#include <nuttx/irq.h>
+#include "chip.h"
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: board_early_initialize
+ * Name: artinchip_lowputc
  *
  * Description:
- *   执行板级早期硬件初始化（禁止阻塞）
+ *   Output one byte on the serial console
  *
  ****************************************************************************/
 
-#ifdef CONFIG_BOARD_EARLY_INITIALIZE
-void board_early_initialize(void)
+void artinchip_lowputc(char ch)
 {
-  /* 早期硬件初始化 */
+  /* 等待 UART 空闲 + 发送缓冲区空 (来源: luban-lite "fix hardware bug") */
+
+  UART_WAIT_IDLE(D13X_UART0_BASE);
+  while (!(getreg32(D13X_UART0_BASE + UART_LSR) & UART_LSR_THRE));
+
+  /* 写入数据 */
+
+  putreg32((uint32_t)ch, D13X_UART0_BASE + UART_RBR_THR_DLL);
 }
-#endif
 
 /****************************************************************************
- * Name: board_late_initialize
+ * Name: up_putc
  *
  * Description:
- *   执行板级主要驱动初始化（允许阻塞）
+ *   Provide priority, low-level access to support OS debug writes
  *
  ****************************************************************************/
 
-#ifdef CONFIG_BOARD_LATE_INITIALIZE
-void board_late_initialize(void)
+void up_putc(int ch)
 {
-  artinchip_bringup();
+  artinchip_lowputc((char)ch);
 }
-#endif

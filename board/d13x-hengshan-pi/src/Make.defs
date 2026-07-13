@@ -7,7 +7,11 @@
 
 include $(TOPDIR)/Make.defs
 
-CSRCS = artinchip_boot.c
+CSRCS = artinchip_boot.c artinchip_bringup.c
+
+ifeq ($(CONFIG_D13X_TOUCH_GT911),y)
+  CSRCS += artinchip_touch.c
+endif
 
 ifeq ($(CONFIG_BOARDCTL),y)
   CSRCS += artinchip_appinit.c

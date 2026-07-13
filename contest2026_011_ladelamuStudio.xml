@@ -5,5 +5,7 @@
     <linkfile src="app/hello_app" dest="packages/demos/contest2026_011_hello_app"/>
     <linkfile src="quickapp/hello_quickapp" dest="packages/apps/contest2026_011_hello_quickapp"/>
     <linkfile src="board/d13x-hengshan-pi" dest="vendor/artinchip/boards/d13x-hengshan-pi"/>
+    <linkfile src="board/d13x-hengshan-pi/pack" dest="vendor/artinchip/boards/d13x/hengshan-pi/pack"/>
+    <linkfile src="chip/d13x" dest="vendor/artinchip/chips/d13x"/>
   </project>
 </manifest>

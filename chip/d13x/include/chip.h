@@ -1,31 +1,24 @@
 /****************************************************************************
- * vendor/artinchip/boards/d13x-hengshan-pi/src/artinchip_appinit.c
+ * vendor/artinchip/chips/d13x/include/chip.h
  *
- * D13x Hengshan Pi 应用初始化
+ * D13x 公共芯片头文件
  *
  ****************************************************************************/
+
+#ifndef __VENDOR_ARTINCHIP_CHIPS_D13X_INCLUDE_CHIP_H
+#define __VENDOR_ARTINCHIP_CHIPS_D13X_INCLUDE_CHIP_H
 
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/compiler.h>
-#include <nuttx/board.h>
+#include "../../chip.h"
 
 /****************************************************************************
- * Public Functions
+ * Pre-processor Definitions
  ****************************************************************************/
 
-/****************************************************************************
- * Name: board_app_initialize
- *
- * Description:
- *   应用层初始化
- *
- ****************************************************************************/
+#define D13X_SYSCLK_FREQ            D13X_PLL_INT0_FREQ
 
-int board_app_initialize(uintptr_t arg)
-{
-  return 0;
-}
+#endif /* __VENDOR_ARTINCHIP_CHIPS_D13X_INCLUDE_CHIP_H */
