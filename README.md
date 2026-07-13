@@ -1,68 +1,66 @@
-# openvela D13x Hengshan-Pi port
+# openvela D13x 衡山派移植
 
-This repository contains the contest-owned sources required to port openvela
-to the ArtInChip D13x Hengshan-Pi board (D133EBS, Xuantie E907).
+本仓库保存将 openvela 移植到匠芯创 D13x 衡山派开发板所需的参赛者代码。
+目标芯片为 D133EBS，CPU 为玄铁 E907。
 
-## Hardware-verified baseline
+## 硬件验证基线
 
-The tracked source is the frozen `step20b` baseline tested on 2026-07-13.
+当前源码来自 2026-07-13 在真实开发板验证过的 `step20b` 冻结版本。
 
-| Function | Status | Verification |
+| 功能 | 状态 | 验证结果 |
 | --- | --- | --- |
-| SPI NOR boot | Verified | PBP and tinySPL load and enter NuttX |
-| UART0 console | Verified | 115200 8N1, interactive NSH input and output |
-| NuttX VFS | Verified | repeated `ls /dev` completes without an exception |
-| I2C2 | Verified at registration | `/dev/i2c2` is present |
-| LVDS display | Verified | `/dev/fb0`, 1024x600 color bars, PE13 backlight |
-| GT911 touch | Source present, disabled | not enabled until runtime validation is complete |
-| System timer | IRQ masked | the unverified timer experiment is intentionally excluded |
+| SPI NOR 启动 | 已验证 | PBP 和 tinySPL 能加载并进入 NuttX |
+| UART0 控制台 | 已验证 | 115200 8N1，NSH 可正常输入和输出 |
+| NuttX VFS | 已验证 | 反复执行 `ls /dev` 不再触发异常 |
+| I2C2 | 已验证注册 | `/dev/i2c2` 节点存在 |
+| LVDS 显示 | 已验证 | `/dev/fb0`、1024x600 彩条、PE13 背光正常 |
+| GT911 触摸 | 仅保留源码，默认关闭 | 等待后续真机运行验证 |
+| 系统定时器 | IRQ 保持屏蔽 | 未纳入本次显示成功基线 |
 
-The display image validated on hardware has SHA-256:
+真机显示验证所使用镜像的 SHA-256 为：
 
 ```text
 64e102b1d68e4b8148ac30f4c57941149c851348b1f32fe2db97b25fbf871855
 ```
 
-## Repository layout
+## 仓库结构
 
 ```text
-board/d13x-hengshan-pi/   board code, NSH defconfig and image inputs
-chip/d13x/                D13x startup, IRQ, UART, I2C and display drivers
-nuttx-overlay/            required changes to the upstream NuttX tree
-vendor-overlay/           D13x ArtInChip packer inputs and pack script
-scripts/integrate.sh      install contest sources into an openvela workspace
-scripts/build.sh          integrate, configure, build and pack
-logs/                     official AI coding logs
+board/d13x-hengshan-pi/   板级代码、NSH 配置和镜像打包输入
+chip/d13x/                D13x 启动、中断、串口、I2C 和显示驱动
+nuttx-overlay/            必须覆盖到上游 NuttX 的文件
+vendor-overlay/           D13x 匠芯创打包工具输入和打包脚本
+scripts/integrate.sh      将参赛代码安装到 openvela 工作区
+scripts/build.sh          集成、配置、编译并打包镜像
+logs/                     官方格式的 AI Coding 日志
 ```
 
-Generated object files, temporary ROMFS headers and historical test images are
-not source artifacts and are not part of this port.
+目标文件、临时 ROMFS 头文件和历史测试镜像均为可再生构建产物，不作为移植
+源码提交。
 
-## Build
+## 编译与打包
 
-The workspace must contain sibling `nuttx`, `apps`, and `vendor/artinchip`
-trees from the official `dev-ai-contest-2026` branches. The contest manifest
-provides the new board and chip paths; the integration script applies the
-tracked NuttX and vendor overlays.
+工作区中需要存在同级的 `nuttx`、`apps` 和 `vendor/artinchip`，并使用官方
+`dev-ai-contest-2026` 分支。比赛 manifest 会链接新的板级和芯片目录；集成
+脚本负责安装本仓库保存的 NuttX 与 vendor 覆盖文件。
 
-Prerequisites include Python 3, CMake, Ninja, Kconfig tools and an RV32 GNU
-bare-metal toolchain available as `riscv32-unknown-elf-*` or
-`riscv-none-elf-*`.
+主机需要 Python 3、CMake、Ninja、Kconfig 工具，以及命令前缀为
+`riscv32-unknown-elf-*` 或 `riscv-none-elf-*` 的 RV32 GNU 裸机工具链。
 
 ```bash
 cd contest2026_011_ladelamuStudio
 ./scripts/build.sh /path/to/openvela-workspace
 ```
 
-The resulting image is:
+最终可烧录镜像位于：
 
 ```text
 vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
 ```
 
-The 16 MiB SPI NOR layout totals 15 MiB:
+16 MiB SPI NOR 的分区合计使用 15 MiB：
 
-| Partition | Size |
+| 分区 | 大小 |
 | --- | ---: |
 | spl | 512 KiB |
 | env + env_r | 256 KiB |
@@ -71,26 +69,23 @@ The 16 MiB SPI NOR layout totals 15 MiB:
 | rodata | 10 MiB |
 | data | 1 MiB |
 
-## Flash and smoke test
+## 烧录与冒烟测试
 
-1. Hold BOOT while connecting the board, then flash the generated `.img` with
-   AiBurn.
-2. Connect UART0 TX, RX and GND to a 3.3 V USB-TTL adapter.
-3. Open the console at 115200 8N1 with hardware and software flow control off.
-4. Run `echo RX_OK` and repeat `ls /dev`.
-5. Confirm `/dev/i2c2` and `/dev/fb0`, backlight, and the 1024x600 color bars.
+1. 按住 BOOT 键连接开发板，使用 AiBurn 烧录生成的 `.img`。
+2. 将 UART0 的 TX、RX、GND 连接到 3.3 V USB 转 TTL 模块。
+3. 串口设置为 115200 8N1，并关闭硬件、软件流控。
+4. 执行 `echo RX_OK`，再连续多次执行 `ls /dev`。
+5. 确认 `/dev/i2c2`、`/dev/fb0`、背光和 1024x600 彩条均正常。
 
-## Important implementation notes
+## 关键实现说明
 
-- `d13x_head.S` enters C with `jal x1, __start_c`; the linked target and C
-  prologue are retained from the hardware-verified image.
-- NuttX executes from PSRAM at `0x30040000`; the image entry and linker script
-  use the same address.
-- The frozen CORET/GTC path remains disabled because enabling IRQ 7 was not
-  part of the verified display baseline.
-- Touch code is retained for the next feature commit but its Kconfig option is
-  off in `configs/nsh/defconfig`.
+- `d13x_head.S` 使用 `jal x1, __start_c` 进入 C 代码；跳转目标和 C 函数
+  序言保持真机验证版本不变。
+- NuttX 从 `0x30040000` 的 PSRAM 执行，镜像入口与链接脚本地址一致。
+- CORET/GTC 路径保持关闭，因为 IRQ 7 的定时器实验未纳入显示成功基线。
+- GT911 代码用于下一次独立功能提交；当前 `configs/nsh/defconfig` 不启用
+  触摸配置。
 
-## License
+## 许可证
 
 Apache-2.0

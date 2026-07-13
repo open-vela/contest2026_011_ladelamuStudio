@@ -1,4 +1,4 @@
-name: D13x build and pack
+name: D13x 构建与打包
 
 on:
   push:
@@ -13,12 +13,12 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout contest repository
+      - name: 检出比赛仓
         uses: actions/checkout@v4
         with:
           path: contest2026_011_ladelamuStudio
 
-      - name: Checkout NuttX
+      - name: 检出 NuttX
         uses: actions/checkout@v4
         with:
           repository: open-vela/nuttx
@@ -26,7 +26,7 @@ jobs:
           path: nuttx
           fetch-depth: 1
 
-      - name: Checkout apps
+      - name: 检出 apps
         uses: actions/checkout@v4
         with:
           repository: open-vela/apps
@@ -34,7 +34,7 @@ jobs:
           path: apps
           fetch-depth: 1
 
-      - name: Checkout ArtInChip vendor tree
+      - name: 检出匠芯创 vendor 仓
         uses: actions/checkout@v4
         with:
           repository: open-vela/vendor_artinchip
@@ -42,14 +42,14 @@ jobs:
           path: vendor/artinchip
           fetch-depth: 1
 
-      - name: Install host dependencies
+      - name: 安装主机依赖
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential ccache cmake flex bison gperf \
             genromfs libselinux1 ninja-build python3 python3-pip wget
           pip3 install --break-system-packages kconfiglib pycryptodome pyelftools pyyaml
 
-      - name: Install RISC-V toolchain
+      - name: 安装 RISC-V 工具链
         run: |
           wget -q https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v14.2.0-3/xpack-riscv-none-elf-gcc-14.2.0-3-linux-x64.tar.gz -O /tmp/riscv-toolchain.tar.gz
           sudo tar -xzf /tmp/riscv-toolchain.tar.gz -C /opt
@@ -61,12 +61,12 @@ jobs:
           echo "$HOME/bin" >> "$GITHUB_PATH"
           echo "/opt/xpack-riscv-none-elf-gcc-14.2.0-3/bin" >> "$GITHUB_PATH"
 
-      - name: Integrate, build and pack
+      - name: 集成、编译并打包
         env:
           JOBS: 2
         run: contest2026_011_ladelamuStudio/scripts/build.sh "$GITHUB_WORKSPACE"
 
-      - name: Upload firmware
+      - name: 上传固件产物
         uses: actions/upload-artifact@v4
         with:
           name: d13x-hengshan-pi-firmware
