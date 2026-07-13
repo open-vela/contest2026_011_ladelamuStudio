@@ -8,5 +8,6 @@
 #define __VENDOR_ARTINCHIP_BOARDS_D13X_HENGSHAN_PI_SRC_ARTINCHIP_TOUCH_H
 
 int d13x_touch_gt911_initialize(void);
+void d13x_touch_poll(void);
 
 #endif

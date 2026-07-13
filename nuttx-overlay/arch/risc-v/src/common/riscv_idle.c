@@ -69,6 +69,15 @@ void up_idle(void)
   extern void d13x_uart_rxpoll(void);
 
   d13x_uart_rxpoll();
+#endif
+
+#ifdef CONFIG_D13X_TOUCH_GT911
+  extern void d13x_touch_poll(void);
+
+  d13x_touch_poll();
+#endif
+
+#if defined(CONFIG_D13X_UART0) || defined(CONFIG_D13X_TOUCH_GT911)
   return;
 #endif
 

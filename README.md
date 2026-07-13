@@ -14,13 +14,19 @@
 | NuttX VFS | 已验证 | 反复执行 `ls /dev` 不再触发异常 |
 | I2C2 | 已验证注册 | `/dev/i2c2` 节点存在 |
 | LVDS 显示 | 已验证 | `/dev/fb0`、1024x600 彩条、PE13 背光正常 |
-| GT911 触摸 | 仅保留源码，默认关闭 | 等待后续真机运行验证 |
+| GT911 触摸 | 已验证 | `/dev/input0` 可报告按下、移动和抬起事件 |
 | 系统定时器 | IRQ 保持屏蔽 | 未纳入本次显示成功基线 |
 
 真机显示验证所使用镜像的 SHA-256 为：
 
 ```text
 64e102b1d68e4b8148ac30f4c57941149c851348b1f32fe2db97b25fbf871855
+```
+
+真机触摸验证所使用镜像的 SHA-256 为：
+
+```text
+4dc5dcc6c6f9fffca4282d574286a0ccd89c625de6f123a54cbd1f01b549b5be
 ```
 
 ## 仓库结构
@@ -75,7 +81,11 @@ vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
 2. 将 UART0 的 TX、RX、GND 连接到 3.3 V USB 转 TTL 模块。
 3. 串口设置为 115200 8N1，并关闭硬件、软件流控。
 4. 执行 `echo RX_OK`，再连续多次执行 `ls /dev`。
-5. 确认 `/dev/i2c2`、`/dev/fb0`、背光和 1024x600 彩条均正常。
+5. 确认 `/dev/i2c2`、`/dev/fb0`、`/dev/input0`、背光和 1024x600
+   彩条均正常。
+6. 按下、移动和松开触摸屏时分别执行
+   `hexdump /dev/input0 count=32`，确认标志依次包含 `0x19`、`0x1a`
+   和 `0x1c`。
 
 ## 关键实现说明
 
@@ -83,8 +93,10 @@ vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
   序言保持真机验证版本不变。
 - NuttX 从 `0x30040000` 的 PSRAM 执行，镜像入口与链接脚本地址一致。
 - CORET/GTC 路径保持关闭，因为 IRQ 7 的定时器实验未纳入显示成功基线。
-- GT911 代码用于下一次独立功能提交；当前 `configs/nsh/defconfig` 不启用
-  触摸配置。
+- GT911 使用 I2C2 和 `/dev/input0`。由于 GPIO/CLIC 中断返回路径尚未纳入
+  稳定基线，PA11 由 idle 任务轮询，I2C 读取仍在调用者任务上下文执行。
+- 启动时保留面板内置 GT911 配置，避免通用配置表覆盖分辨率、坐标方向和
+  传感器调校参数。
 
 ## 许可证
 
