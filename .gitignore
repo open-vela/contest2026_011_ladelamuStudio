@@ -1,0 +1,20 @@
+# Local build outputs
+*.a
+*.d
+*.elf
+*.img
+*.o
+*.pyc
+.config
+.depend
+Make.dep
+__pycache__/
+
+# ArtInChip pack outputs; reproducible inputs remain tracked.
+vendor-overlay/pack/prebuilt/*.aic
+vendor-overlay/pack/prebuilt/*.bin
+vendor-overlay/pack/prebuilt/*.elf
+vendor-overlay/pack/prebuilt/*.fatfs
+vendor-overlay/pack/prebuilt/*.img
+vendor-overlay/pack/prebuilt/*.itb
+vendor-overlay/pack/prebuilt/*.lfs

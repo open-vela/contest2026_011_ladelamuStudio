@@ -1,109 +1,95 @@
-# D13x openvela 硬件移植项目
+# openvela D13x Hengshan-Pi port
 
-> 2026 首届 openvela AI 硬件开发者大赛 — 新硬件平台适配赛道
+This repository contains the contest-owned sources required to port openvela
+to the ArtInChip D13x Hengshan-Pi board (D133EBS, Xuantie E907).
 
-## 项目简介
+## Hardware-verified baseline
 
-将 openvela（基于 NuttX 的 AIoT 操作系统）移植到匠芯创 D13x 系列 RISC-V MCU（衡山派 D133EBS 开发板），完成 BSP 适配与基础驱动开发，使系统能在目标硬件上启动并运行 NSH Shell。
+The tracked source is the frozen `step20b` baseline tested on 2026-07-13.
 
-**芯片亮点**：国产 RISC-V 玄铁 E907 内核 @ 480MHz，1MB SRAM + 8MB PSRAM，集成显示引擎（LVDS/RGB/MIPI）、2D 图形加速、JPEG/PNG 硬解、10/100M 以太网、USB 2.0 HS、8路 UART、4路 SPI、3路 I2C、2路 CAN。
+| Function | Status | Verification |
+| --- | --- | --- |
+| SPI NOR boot | Verified | PBP and tinySPL load and enter NuttX |
+| UART0 console | Verified | 115200 8N1, interactive NSH input and output |
+| NuttX VFS | Verified | repeated `ls /dev` completes without an exception |
+| I2C2 | Verified at registration | `/dev/i2c2` is present |
+| LVDS display | Verified | `/dev/fb0`, 1024x600 color bars, PE13 backlight |
+| GT911 touch | Source present, disabled | not enabled until runtime validation is complete |
+| System timer | IRQ masked | the unverified timer experiment is intentionally excluded |
 
-## 目录结构
+The display image validated on hardware has SHA-256:
 
-```
-contest2026_011_ladelamuStudio/
-├── README.md                           # 本文件
-├── board/
-│   └── d13x-hengshan-pi/              # D13x 板级代码
-│       ├── configs/nsh/defconfig      # 最小 NSH 启动配置
-│       ├── include/board.h            # 板级宏定义
-│       ├── scripts/ld.script          # 链接脚本
-│       ├── scripts/Make.defs          # 编译配置
-│       ├── src/artinchip_boot.c       # 板级启动初始化
-│       └── src/artinchip_appinit.c    # 应用初始化
-├── bootloader-src/                    # D13x bootloader 源码
-│   ├── src/startup.S                  # 启动汇编
-│   ├── src/system.c                   # 系统初始化（时钟、UART）
-│   ├── src/main.c                     # 主程序
-│   ├── include/d13x_boot.h           # 头文件
-│   ├── scripts/linker.ld             # 链接脚本
-│   ├── tools/mk_aic.py               # .aic 镜像生成工具
-│   └── Makefile                       # 编译脚本
-├── app/                               # 示例应用
-├── quickapp/                          # 快应用示例
-├── logs/                              # AI Coding 日志
-└── docs/                              # 参考文档
+```text
+64e102b1d68e4b8148ac30f4c57941149c851348b1f32fe2db97b25fbf871855
 ```
 
-## 编译指南
+## Repository layout
 
-### 环境要求
+```text
+board/d13x-hengshan-pi/   board code, NSH defconfig and image inputs
+chip/d13x/                D13x startup, IRQ, UART, I2C and display drivers
+nuttx-overlay/            required changes to the upstream NuttX tree
+vendor-overlay/           D13x ArtInChip packer inputs and pack script
+scripts/integrate.sh      install contest sources into an openvela workspace
+scripts/build.sh          integrate, configure, build and pack
+logs/                     official AI coding logs
+```
 
-- RISC-V 工具链: xPack riscv-none-elf-gcc 14.2.0
-- Python 3.x + pyyaml
-- make, cmake
+Generated object files, temporary ROMFS headers and historical test images are
+not source artifacts and are not part of this port.
 
-### 编译固件
+## Build
+
+The workspace must contain sibling `nuttx`, `apps`, and `vendor/artinchip`
+trees from the official `dev-ai-contest-2026` branches. The contest manifest
+provides the new board and chip paths; the integration script applies the
+tracked NuttX and vendor overlays.
+
+Prerequisites include Python 3, CMake, Ninja, Kconfig tools and an RV32 GNU
+bare-metal toolchain available as `riscv32-unknown-elf-*` or
+`riscv-none-elf-*`.
 
 ```bash
-# 进入 openvela 工作区
-cd openvela
-
-# 配置
-./tools/configure.sh ../contest2026_011_ladelamuStudio/board/d13x-hengshan-pi/configs/nsh
-
-# 编译
-make -j$(nproc)
-
-# 生成 bin 文件
-riscv-none-elf-objcopy -O binary nuttx nuttx.bin
-
-# 打包 .img 文件
-cd vendor/artinchip/pack
-bash pack.sh hengshan-pi d13x
+cd contest2026_011_ladelamuStudio
+./scripts/build.sh /path/to/openvela-workspace
 ```
 
-### 编译 bootloader
+The resulting image is:
 
-```bash
-cd bootloader-src
-make
+```text
+vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
 ```
 
-### 烧录
+The 16 MiB SPI NOR layout totals 15 MiB:
 
-1. 按住 BOOT 按钮 + 插入 Type-C → 进入烧录模式
-2. 使用 AiBurn 工具加载 `.img` 文件
-3. 点击"开始"烧录
+| Partition | Size |
+| --- | ---: |
+| spl | 512 KiB |
+| env + env_r | 256 KiB |
+| userid | 256 KiB |
+| os | 3 MiB |
+| rodata | 10 MiB |
+| data | 1 MiB |
 
-## 关键技术参数
+## Flash and smoke test
 
-| 参数 | 值 |
-|------|-----|
-| CPU | RISC-V 玄铁 E907, 480MHz |
-| SRAM | 1MB @ 0x20000000 |
-| PSRAM | 8MB @ 0x30000000 |
-| Flash | NOR 16MB |
-| UART0 | 0x18710000, 115200 8N1 |
-| CMU | 0x18020000 |
-| GPIO | 0x18700000 |
+1. Hold BOOT while connecting the board, then flash the generated `.img` with
+   AiBurn.
+2. Connect UART0 TX, RX and GND to a 3.3 V USB-TTL adapter.
+3. Open the console at 115200 8N1 with hardware and software flow control off.
+4. Run `echo RX_OK` and repeat `ls /dev`.
+5. Confirm `/dev/i2c2` and `/dev/fb0`, backlight, and the 1024x600 color bars.
 
-## 评分维度
+## Important implementation notes
 
-| 维度 | 权重 | 策略 |
-|------|------|------|
-| 技术难度 | 30% | RISC-V + 国产芯片 + 外设驱动完整性 |
-| 产品创新 | 20% | 国产芯片首次适配 openvela |
-| 项目完整度 | 20% | 系统启动 + nsh 可用 + 文档完整 |
-| AI 开发 | 10% | 使用 .claude Skills、记录 Token 消耗 |
-| 商业潜力 | 10% | 智能家居中控屏场景 |
-| 展示效果 | 10% | 触摸屏交互 Demo |
-
-## 联系方式
-
-- 队伍: contest2026_011_ladelamuStudio
-- GitHub: https://github.com/lladlam/contest2026_011_ladelamuStudio
-- 大赛仓库: https://github.com/lladlam/2026OpenVela
+- `d13x_head.S` enters C with `jal x1, __start_c`; the linked target and C
+  prologue are retained from the hardware-verified image.
+- NuttX executes from PSRAM at `0x30040000`; the image entry and linker script
+  use the same address.
+- The frozen CORET/GTC path remains disabled because enabling IRQ 7 was not
+  part of the verified display baseline.
+- Touch code is retained for the next feature commit but its Kconfig option is
+  off in `configs/nsh/defconfig`.
 
 ## License
 

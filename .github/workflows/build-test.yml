@@ -1,4 +1,4 @@
-name: D13x Build Test
+name: D13x build and pack
 
 on:
   push:
@@ -11,14 +11,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     steps:
-      - name: Checkout contest repo
+      - name: Checkout contest repository
         uses: actions/checkout@v4
         with:
           path: contest2026_011_ladelamuStudio
 
-      - name: Checkout openvela sources
+      - name: Checkout NuttX
         uses: actions/checkout@v4
         with:
           repository: open-vela/nuttx
@@ -34,7 +34,7 @@ jobs:
           path: apps
           fetch-depth: 1
 
-      - name: Checkout vendor_artinchip
+      - name: Checkout ArtInChip vendor tree
         uses: actions/checkout@v4
         with:
           repository: open-vela/vendor_artinchip
@@ -42,98 +42,35 @@ jobs:
           path: vendor/artinchip
           fetch-depth: 1
 
-      - name: Install dependencies
+      - name: Install host dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential git wget flex bison gperf \
-            python3 python3-pip ninja-build ccache genromfs
-          pip3 install --break-system-packages kconfiglib pyyaml
+          sudo apt-get install -y build-essential ccache cmake flex bison gperf \
+            genromfs libselinux1 ninja-build python3 python3-pip wget
+          pip3 install --break-system-packages kconfiglib pycryptodome pyelftools pyyaml
 
       - name: Install RISC-V toolchain
         run: |
           wget -q https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v14.2.0-3/xpack-riscv-none-elf-gcc-14.2.0-3-linux-x64.tar.gz -O /tmp/riscv-toolchain.tar.gz
-          tar -xzf /tmp/riscv-toolchain.tar.gz -C /opt/
-          echo "/opt/xpack-riscv-none-elf-gcc-14.2.0-3/bin" >> $GITHUB_PATH
-
-      - name: Setup symlinks
-        run: |
-          mkdir -p ~/bin
-          for tool in gcc g++ ar ld objcopy objdump strip nm; do
-            ln -sf /opt/xpack-riscv-none-elf-gcc-14.2.0-3/bin/riscv-none-elf-$tool ~/bin/riscv32-unknown-elf-$tool
+          sudo tar -xzf /tmp/riscv-toolchain.tar.gz -C /opt
+          mkdir -p "$HOME/bin"
+          for tool in ar gcc g++ ld nm objcopy objdump ranlib readelf size strip; do
+            ln -s "/opt/xpack-riscv-none-elf-gcc-14.2.0-3/bin/riscv-none-elf-$tool" \
+              "$HOME/bin/riscv32-unknown-elf-$tool"
           done
-          echo "$HOME/bin" >> $GITHUB_PATH
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          echo "/opt/xpack-riscv-none-elf-gcc-14.2.0-3/bin" >> "$GITHUB_PATH"
 
-      - name: Link board code
-        run: |
-          # Link board directory
-          mkdir -p vendor/artinchip/boards/d13x-hengshan-pi
-          cp -r contest2026_011_ladelamuStudio/board/d13x-hengshan-pi/* vendor/artinchip/boards/d13x-hengshan-pi/
-          
-          # Create symlinks in nuttx tree
-          cd nuttx
-          ln -sf ../../vendor/artinchip/chips/d13x arch/risc-v/src/chip
-          ln -sf ../../vendor/artinchip/boards/d13x-hengshan-pi/src arch/risc-v/src/board
-          ln -sf ../../vendor/artinchip/chips/d13x/include include/arch/chip
-          ln -sf ../../vendor/artinchip/boards/d13x-hengshan-pi/include include/arch/board
-          ln -sf ../../vendor/artinchip/boards/d13x-hengshan-pi/scripts/Make.defs Make.defs
-
-      - name: Configure
-        working-directory: nuttx
-        run: |
-          ./tools/configure.sh -e ../vendor/artinchip/boards/d13x-hengshan-pi/configs/nsh
-          echo -e "\nCONFIG_HOST_LINUX=y\nCONFIG_STACK_USAGE_WARNING=0" >> .config
-
-      - name: Build
-        working-directory: nuttx
-        run: |
-          make -j$(nproc)
-          riscv-none-elf-objcopy -O binary nuttx nuttx.bin
-          ls -lh nuttx nuttx.bin
-
-      - name: Pack image
-        run: |
-          # Copy build artifacts
-          cp nuttx/nuttx vendor/artinchip/pack/prebuilt/nuttx.elf
-          cp nuttx/nuttx.bin vendor/artinchip/pack/prebuilt/nuttx.bin
-          
-          # Configure for D13x
-          cd vendor/artinchip/pack/prebuilt
-          sed -i 's/"platform": "d12x"/"platform": "d13x"/' image_cfg.json
-          sed -i 's/"product": "demo68-nor"/"product": "hengshan-pi"/' image_cfg.json
-          sed -i 's/d12x_os\.itb/d13x_os.itb/g; s/d12x_os\.its/d13x_os.its/g' image_cfg.json
-          
-          # Create ITS file
-          cat d12x_os.its | sed 's/0x40000000/0x20000000/g' > d13x_os.its
-          
-          # Run pack
-          cd ..
-          bash pack.sh hengshan-pi d13x
-          
-          # Verify
-          ls -lh prebuilt/d13x_hengshan-pi_v1.0.0.img
+      - name: Integrate, build and pack
+        env:
+          JOBS: 2
+        run: contest2026_011_ladelamuStudio/scripts/build.sh "$GITHUB_WORKSPACE"
 
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: d13x-firmware
+          name: d13x-hengshan-pi-firmware
           path: |
-            vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
-            nuttx/nuttx.bin
             nuttx/nuttx
+            vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
           retention-days: 7
-
-      - name: Summary
-        run: |
-          echo "=== D13x Firmware Build completed ==="
-          echo "Firmware: vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img"
-          echo ""
-          echo "=== Burning Instructions ==="
-          echo "1. Enter burn mode: Hold BOOT button + plug Type-C USB"
-          echo "2. Launch AiBurn: wine ~/.wine/drive_c/ArtInChip/AiBurn/AiBurn.exe"
-          echo "3. Select '烧写镜像' tab"
-          echo "4. Select the .img file"
-          echo "5. Click '开始' to burn"
-          echo ""
-          echo "=== Device Detection ==="
-          echo "lsusb | grep -i artinchip"
-          echo "# Should show: ID 33c3:6677 Artinchip Artinchip Device"

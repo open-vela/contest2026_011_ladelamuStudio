@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+config=.config
+mode=
+value=
+
+while (($#)); do
+  case "$1" in
+    --file|-f)
+      config=$2
+      shift 2
+      ;;
+    --enable|-e)
+      mode=enable
+      value=$2
+      shift 2
+      ;;
+    --disable|-d)
+      mode=disable
+      value=$2
+      shift 2
+      ;;
+    --set-val|-v)
+      mode=set
+      value=$2
+      shift 2
+      ;;
+    *)
+      echo "error: unsupported kconfig-tweak argument: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+case "$mode" in
+  enable|disable)
+    symbol=$value
+    ;;
+  set)
+    symbol=${value%%=*}
+    [[ "$symbol" != "$value" ]] || {
+      echo "error: --set-val expects CONFIG_SYMBOL=value" >&2
+      exit 2
+    }
+    ;;
+  *)
+    echo "error: no kconfig operation supplied" >&2
+    exit 2
+    ;;
+esac
+
+sed -i \
+  -e "/^${symbol}=/d" \
+  -e "/^# ${symbol} is not set$/d" \
+  "$config"
+
+case "$mode" in
+  enable)
+    printf '%s=y\n' "$symbol" >> "$config"
+    ;;
+  disable)
+    printf '# %s is not set\n' "$symbol" >> "$config"
+    ;;
+  set)
+    printf '%s\n' "$value" >> "$config"
+    ;;
+esac
