@@ -7,8 +7,8 @@
             "env_r":      { "size": "128k" },
             "userid":     { "size": "256k" }, // at least 16KB
             "os":         { "size": "3m" },
-            "rodata":     { "size": "10m" },
-            "data":       { "size": "1m" }
+            "rodata":     { "size": "4m" },
+            "data":       { "size": "7m" }
         },
     },
     "image": {

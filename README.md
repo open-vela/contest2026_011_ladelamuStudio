@@ -5,7 +5,8 @@
 
 ## 硬件验证基线
 
-当前源码来自 2026-07-13 在真实开发板验证过的 `step20b` 冻结版本。
+当前源码以 2026-07-13 的 `step20b` 真机基线为起点，并于 2026-07-14
+完成家庭中控界面与有线以太网验证。
 
 | 功能 | 状态 | 验证结果 |
 | --- | --- | --- |
@@ -16,6 +17,7 @@
 | LVDS 显示 | 已验证 | `/dev/fb0`、1024x600 彩条、PE13 背光正常 |
 | GT911 触摸 | 已验证 | `/dev/input0` 可报告按下、移动和抬起事件 |
 | 系统定时器 | 已验证 | CORET 4 MHz 计数器轮询，`sleep`/`usleep` 正常 |
+| GMAC0 以太网 | 已验证 | RMII 100M 全双工，DHCP、网关及外网连通正常 |
 
 真机显示验证所使用镜像的 SHA-256 为：
 
@@ -35,11 +37,18 @@
 3a1a6613bb8df7b0434c5d491f593781bdad1e4d33dacda33a2a7c90d94117d2
 ```
 
+家庭中控界面、触摸和以太网联合验证镜像的 SHA-256 为：
+
+```text
+88c5d3647cf2c3cede75eea15e4475f73dbf15f4dcc106a693af77e96785de05
+```
+
 ## 仓库结构
 
 ```text
 board/d13x-hengshan-pi/   板级代码、NSH 配置和镜像打包输入
-chip/d13x/                D13x 启动、中断、串口、I2C 和显示驱动
+chip/d13x/                D13x 启动、中断、串口、I2C、显示和 GMAC 驱动
+app/home_panel/           1024x600 家庭中控屏 LVGL 应用与裁剪字库
 nuttx-overlay/            必须覆盖到上游 NuttX 的文件
 vendor-overlay/           D13x 匠芯创打包工具输入和打包脚本
 scripts/integrate.sh      将参赛代码安装到 openvela 工作区
@@ -78,8 +87,8 @@ vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
 | env + env_r | 256 KiB |
 | userid | 256 KiB |
 | os | 3 MiB |
-| rodata | 10 MiB |
-| data | 1 MiB |
+| rodata | 4 MiB |
+| data | 7 MiB |
 
 ## 烧录与冒烟测试
 
@@ -92,6 +101,8 @@ vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
 6. 按下、移动和松开触摸屏时分别执行
    `hexdump /dev/input0 count=32`，确认标志依次包含 `0x19`、`0x1a`
    和 `0x1c`。
+7. 接入有线网络并执行 `renew eth0`，确认 `ifconfig` 获得 DHCP 地址；再用
+   `ping` 验证默认网关和外网地址均可达。
 
 ## 关键实现说明
 
@@ -105,6 +116,9 @@ vendor/artinchip/pack/prebuilt/d13x_hengshan-pi_v1.0.0.img
   稳定基线，PA11 由 idle 任务轮询，I2C 读取仍在调用者任务上下文执行。
 - 启动时保留面板内置 GT911 配置，避免通用配置表覆盖分辨率、坐标方向和
   传感器调校参数。
+- GMAC0 使用 RMII 与 16 项 RX 描述符环。D13x E907 数据缓存行按 32 字节
+  对齐并执行 T-Head 缓存维护，避免描述符和长帧因错误的 64 字节步长损坏；
+  DHCP 客户端设置 BOOTP broadcast 标志以兼容广播应答。
 
 ## 许可证
 

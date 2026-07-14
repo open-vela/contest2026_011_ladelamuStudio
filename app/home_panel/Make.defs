@@ -1,0 +1,12 @@
+############################################################################
+# D13x Hengshan-Pi home control panel
+############################################################################
+
+ifneq ($(CONFIG_D13X_HOME_PANEL),)
+CONFIGURED_APPS += $(APPDIR)/industry/d13x_home_panel
+
+# LVGL 9.2.1 models these empty attributes as Kconfig strings.  Define the
+# actual C attributes as empty tokens so the generated quoted values are not
+# emitted into declarations.
+CFLAGS += -DLV_ATTRIBUTE_MEM_ALIGN= -DLV_ATTRIBUTE_LARGE_CONST=
+endif

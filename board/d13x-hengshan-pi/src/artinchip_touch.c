@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <syslog.h>
 
 #include <debug.h>
 #include <nuttx/arch.h>
@@ -277,6 +278,11 @@ int d13x_touch_gt911_initialize(void)
   if (ret < 0)
     {
       ierr("GT9xx registration failed: %d\n", ret);
+    }
+  else
+    {
+      syslog(LOG_INFO, "[D13TOUCH] ready addr=0x%02x dev=/dev/input0\n",
+             addr);
     }
 
   return ret;

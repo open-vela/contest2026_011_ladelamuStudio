@@ -1,0 +1,29 @@
+#
+# D13x Hengshan-Pi home control panel
+#
+
+menuconfig D13X_HOME_PANEL
+	tristate "D13x landscape home control panel"
+	default n
+	depends on GRAPHICS_LVGL
+	select LV_USE_NUTTX
+	select LV_USE_NUTTX_TOUCHSCREEN
+	---help---
+		Build the 1024x600 LVGL home control panel for Hengshan-Pi.
+
+if D13X_HOME_PANEL
+
+config D13X_HOME_PANEL_PRIORITY
+	int "Home panel task priority"
+	default 100
+
+config D13X_HOME_PANEL_STACKSIZE
+	int "Home panel task stack size"
+	default 32768
+
+config D13X_HOME_PANEL_INPUT_DEVPATH
+	string "Touchscreen device path"
+	default "/dev/input0"
+	depends on INPUT_TOUCHSCREEN
+
+endif

@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
-WORKSPACE=${1:-$(cd "$REPO_ROOT/.." && pwd)}
+WORKSPACE=$(realpath "${1:-$REPO_ROOT/..}")
 JOBS=${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)}
 export PATH="$REPO_ROOT/scripts/tools:$PATH"
 

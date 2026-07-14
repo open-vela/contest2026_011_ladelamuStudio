@@ -7,6 +7,7 @@
 #include <nuttx/cache.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/video/fb.h>
+#include <nuttx/wdog.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -31,9 +32,11 @@ struct d13x_fb_state_s
   bool initialized;
   bool power_on;
   uint8_t *memory;
+  struct wdog_s pan_wdog;
 };
 
 static struct d13x_fb_state_s g_fb;
+static void d13x_fb_pan_complete(wdparm_t arg);
 
 static void d13x_fb_clean_cache(void)
 {
@@ -109,6 +112,13 @@ static int d13x_fb_pandisplay(struct fb_vtable_s *vtable,
   address = (uintptr_t)g_fb.memory + pinfo->yoffset * D13X_FB_STRIDE;
   d13x_fb_clean_cache();
   d13x_de_set_framebuffer(address);
+
+  /* The DE switches buffers immediately and this port has no VSYNC IRQ.
+   * Release the queued frame after FBIOPAN_DISPLAY has added it, otherwise
+   * LVGL stops refreshing when both framebuffer slots are queued.
+   */
+
+  wd_start(&g_fb.pan_wdog, 1, d13x_fb_pan_complete, 0);
   return OK;
 }
 
@@ -154,41 +164,13 @@ static struct fb_vtable_s g_fb_vtable =
   .setpower = d13x_fb_setpower,
 };
 
-static void d13x_fb_colorbars(uint16_t *fb)
+static void d13x_fb_pan_complete(wdparm_t arg)
 {
-  static const uint16_t colors[8] =
-  {
-    0xffff, 0xffe0, 0x07ff, 0x07e0,
-    0xf81f, 0xf800, 0x001f, 0x0000
-  };
-  uint32_t x;
-  uint32_t y;
+  (void)arg;
 
-  for (y = 0; y < D13X_FB_HEIGHT; y++)
+  while (fb_remove_paninfo(&g_fb_vtable, FB_NO_OVERLAY) == OK)
     {
-      for (x = 0; x < D13X_FB_WIDTH; x++)
-        {
-          fb[y * D13X_FB_WIDTH + x] = colors[x * 8u / D13X_FB_WIDTH];
-        }
     }
-}
-
-void d13x_fb_show_colorbars(void)
-{
-  if (!g_fb.initialized)
-    {
-      return;
-    }
-
-  /* fb_register_device() clears the framebuffer after up_fbinitialize().
-   * Restore the boot test pattern only after the device is registered.
-   */
-
-  d13x_fb_colorbars((uint16_t *)g_fb.memory);
-  memcpy(g_fb.memory + D13X_FB_FRAME_SIZE, g_fb.memory,
-         D13X_FB_FRAME_SIZE);
-  d13x_fb_clean_cache();
-  d13x_de_set_framebuffer((uintptr_t)g_fb.memory);
 }
 
 int up_fbinitialize(int display)
@@ -220,9 +202,7 @@ int up_fbinitialize(int display)
       return -ENOMEM;
     }
 
-  d13x_fb_colorbars((uint16_t *)g_fb.memory);
-  memcpy(g_fb.memory + D13X_FB_FRAME_SIZE, g_fb.memory,
-         D13X_FB_FRAME_SIZE);
+  memset(g_fb.memory, 0, D13X_FB_TOTAL_SIZE);
   d13x_fb_clean_cache();
 
   d13x_panel_get_timing(&hactive, &vactive, &hfp, &hbp, &hsync,
@@ -261,6 +241,7 @@ errout:
   d13x_panel_disable();
   d13x_de_disable();
   d13x_lvds_disable();
+  wd_cancel(&g_fb.pan_wdog);
   kmm_free(g_fb.memory);
   memset(&g_fb, 0, sizeof(g_fb));
   return ret;
@@ -286,6 +267,7 @@ void up_fbuninitialize(int display)
   d13x_panel_disable();
   d13x_de_disable();
   d13x_lvds_disable();
+  wd_cancel(&g_fb.pan_wdog);
   kmm_free(g_fb.memory);
   memset(&g_fb, 0, sizeof(g_fb));
 }

@@ -22,6 +22,10 @@ ifeq ($(CONFIG_D13X_I2C),y)
   CHIP_CSRCS += artinchip_i2c.c
 endif
 
+ifeq ($(CONFIG_D13X_GMAC),y)
+  CHIP_CSRCS += artinchip_gmac.c
+endif
+
 ifeq ($(CONFIG_D13X_DISPLAY),y)
   CHIP_CSRCS += artinchip_fb.c
   CHIP_CSRCS += artinchip_de.c

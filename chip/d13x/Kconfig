@@ -72,6 +72,14 @@ config D13X_TOUCH_GT911
     select INPUT_TOUCHSCREEN
     select INPUT_GT9XX
 
+config D13X_GMAC
+    bool "GMAC0 RMII Ethernet support"
+    select NET
+    select NET_ETHERNET
+    select SCHED_LPWORK
+    ---help---
+        Enable the D13x GMAC0 controller, external RMII PHY and MDIO bus.
+
 config D13X_DISPLAY
     bool "LVDS display support"
     select DRIVERS_VIDEO

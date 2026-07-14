@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 CUR_DIR=$(pwd)
 SDK_ROOT=$(realpath "$CUR_DIR/../../..")
 NUTTX_CONFIG="$SDK_ROOT/nuttx/.config"
@@ -66,6 +68,11 @@ else
     exit 1
 fi
 
+# Keep filesystem image sizes in sync with the board partition layout.
+python3 "$TOOLDIR/gen_partition_file_list.py" \
+    -c "$PRJ_OUT/image_cfg.json" \
+    -o "$PRJ_OUT/partition_file_list.h"
+
 # 3.  prepare base files (ELF/Manifest) and convert to binary nuttx.bin
 NUTTX_ELF="$SDK_ROOT/nuttx/nuttx.elf"
 if [ ! -f "$NUTTX_ELF" ]; then
@@ -98,7 +105,15 @@ python3 $TOOLDIR/fsinstall.py --sdkout $PRJ_OUT --src $SDK_ROOT/vendor/artinchip
 
 # 6.  generate file system image (FATFS and LittleFS)
 pushd $PRJ_OUT > /dev/null
-python3 $TOOLDIR/makefatfs.py --fullpart --volab default --cluster 8 --sector 512 --tooldir $TOOLDIR --inputdir rodata --outfile $PRJ_OUT/rodata.fatfs
+if ! python3 $TOOLDIR/makefatfs.py --fullpart --volab default --cluster 8 --sector 512 --tooldir $TOOLDIR --inputdir rodata --outfile $PRJ_OUT/rodata.fatfs; then
+    echo ">>> Sparse FAT conversion unavailable; validating raw FAT image"
+    FAT_CHECK_DIR=$(mktemp -d)
+    trap 'rm -rf "$FAT_CHECK_DIR"' EXIT
+    $TOOLDIR/mcopy -i $PRJ_OUT/rodata.fatfs -s '::/*' "$FAT_CHECK_DIR/"
+    diff -qr "$PRJ_OUT/rodata" "$FAT_CHECK_DIR"
+    rm -rf "$FAT_CHECK_DIR"
+    trap - EXIT
+fi
 python3 $TOOLDIR/makelittlefs.py --pagesize 256 --blocksize 4096 --tooldir $TOOLDIR --inputdir data/ --outfile $PRJ_OUT/data.lfs
 popd > /dev/null
 
