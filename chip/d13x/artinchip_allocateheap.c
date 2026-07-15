@@ -18,10 +18,14 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* .data 段之后是 .bss 段，.bss 段之后是 IDLE 栈，堆从 IDLE 栈之后开始 */
+/* The application and IDLE stack execute from PSRAM.  SRAM is therefore the
+ * primary heap, while the unused PSRAM tail is added as a second region.
+ */
 
-extern uint32_t _ebss[];
-#define HEAP_BASE      ((uintptr_t)_ebss + CONFIG_IDLETHREAD_STACKSIZE)
+extern uint32_t _eidle_stack[];
+#define PSRAM_HEAP_BASE \
+  (((uintptr_t)_eidle_stack + 15u) & ~(uintptr_t)15u)
+#define PSRAM_END       (D13X_PSRAM_BASE + D13X_PSRAM_SIZE)
 
 /****************************************************************************
  * Public Functions
@@ -37,15 +41,8 @@ extern uint32_t _ebss[];
 
 void up_allocate_heap(void **heap_start, size_t *heap_size)
 {
-  /* 堆起始地址: _ebss + IDLE 栈大小 */
-
-  *heap_start = (void *)HEAP_BASE;
-
-  /* 堆大小: SRAM 结束地址 - 堆起始地址 */
-
-  /* Luban-lite reserves the final 0x100 bytes of D13x SRAM_S0. */
-
-  *heap_size = D13X_SRAM_BASE + D13X_SRAM_USABLE_SIZE - HEAP_BASE;
+  *heap_start = (void *)D13X_SRAM_BASE;
+  *heap_size = D13X_SRAM_USABLE_SIZE;
 }
 
 /****************************************************************************
@@ -60,8 +57,10 @@ void up_allocate_heap(void **heap_start, size_t *heap_size)
 #if CONFIG_MM_REGIONS > 1
 void riscv_addregion(void)
 {
-  /* 添加 PSRAM 作为额外堆区域 */
-
-  umm_addregion((void *)D13X_PSRAM_BASE, D13X_PSRAM_SIZE);
+  if (PSRAM_HEAP_BASE < PSRAM_END)
+    {
+      umm_addregion((void *)PSRAM_HEAP_BASE,
+                    PSRAM_END - PSRAM_HEAP_BASE);
+    }
 }
 #endif

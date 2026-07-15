@@ -8,6 +8,9 @@ menuconfig D13X_HOME_PANEL
 	depends on GRAPHICS_LVGL
 	select LV_USE_NUTTX
 	select LV_USE_NUTTX_TOUCHSCREEN
+	select LV_USE_IMAGE
+	select NETUTILS_CJSON
+	select NETUTILS_WEBCLIENT
 	---help---
 		Build the 1024x600 LVGL home control panel for Hengshan-Pi.
 
@@ -25,5 +28,19 @@ config D13X_HOME_PANEL_INPUT_DEVPATH
 	string "Touchscreen device path"
 	default "/dev/input0"
 	depends on INPUT_TOUCHSCREEN
+
+config D13X_HOME_PANEL_MIJIA_SERVER_URL
+	string "Mijia API server URL"
+	default "http://192.168.1.24:8123"
+
+config D13X_HOME_PANEL_MIJIA_TIMEOUT
+	int "Mijia API inactivity timeout in seconds"
+	default 10
+	range 3 60
+
+config D13X_HOME_PANEL_MIJIA_MAX_RESPONSE
+	int "Maximum Mijia API response size"
+	default 32768
+	range 4096 131072
 
 endif

@@ -5,15 +5,15 @@
 	#address-cells = <1>;
 
 	images {
-		version = "1.2.4.4";
+		version = "1.3.4.5";
 		seg0 {
 			description = "Artinchip segment 0";
 			data = /incbin/("./nuttx.bin");
 			type = "firmware";
 			arch = "riscv";
 			os = "artinchip";
-			load = <0x30040000>;
-			entry = <0x30040000>;
+			load = <0x40000000>;
+			entry = <0x40000000>;
 			hash-1 {
 				algo = "crc32";
 			};

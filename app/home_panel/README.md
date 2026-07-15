@@ -11,7 +11,14 @@ nsh> home_panel
 ```
 
 界面直接使用 `/dev/fb0` 的 RGB565 双缓冲和 `/dev/input0` 的 GT911 触摸事件。
-账号授权与设备数据后续通过有线网络连接服务器，米家账号凭据不保存在开发板。
+账号授权通过有线网络连接独立的 `mijia-api` 服务。点击“登录米家”后，开发板
+请求一次性登录会话、显示米家 App 扫码二维码，并在确认后领取短期 Bearer token，
+随后同步家庭名称和设备在线统计。账号认证数据保存在服务端加密保险箱中，不写入
+开发板固件。
+
+服务地址由 `CONFIG_D13X_HOME_PANEL_MIJIA_SERVER_URL` 配置，当前实机测试默认值为
+`http://192.168.1.24:8123`。服务端应与开发板处于同一有线局域网；二维码登录和
+设备同步均在独立工作线程中执行，不阻塞 LVGL 刷新和触摸输入。
 
 应用后台每秒读取 `eth0` 的 carrier 状态，并每 15 秒依次用 ICMP 检测
 `mi.com` 与 `xiaomi.cn`。界面区分“有线网络未连接”“无互联网连接”和
@@ -31,14 +38,16 @@ SPI NOR 使用 15 MiB 的显式分区布局：系统 3 MiB、只读资源 4 MiB�
   I2C 和 touchscreen 子系统，Apache-2.0 许可证。
 - [LVGL](https://github.com/lvgl/lvgl)：家庭中控屏图形与事件框架，MIT 许可证；
   当前固件使用 LVGL 9.2.1。
+- [cJSON](https://github.com/DaveGamble/cJSON)：解析 `mijia-api` 登录状态与设备
+  响应，MIT 许可证；由 OpenVela `NETUTILS_CJSON` 组件集成。
 - [ArtInChip Luban-Lite](https://gitee.com/artinchip/luban-lite)：D13x 启动、显示、
   时钟与外设实现的移植参考；其代码不作为本应用的独立运行时库加载。
 
 ### 服务端接口参考
 
-- [mijia-api](https://github.com/Do1e/mijia-api)：米家 App 扫码登录、家庭、设备、
-  属性和场景接口参考，GPL-3.0 许可证。该项目运行在服务器侧，不链接进 D13x
-  固件，开发板只通过后续定义的有线网络 API 与服务器通信。
+- [mijia-api](https://github.com/Do1e/mijia-api)：提供米家 App 扫码登录、家庭、
+  设备、属性和场景接口，GPL-3.0 许可证。该项目独立运行在服务器侧，不链接进
+  D13x 固件；开发板只通过 HTTP API 与其通信。
 
 ### 字体与生成工具
 

@@ -15,6 +15,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <syslog.h>
@@ -23,7 +24,10 @@
 #include <lvgl/lvgl.h>
 #include <netutils/netlib.h>
 
+#include "home_panel_mijia_client.h"
+
 LV_FONT_DECLARE(home_panel_misans_18);
+LV_FONT_DECLARE(home_panel_digits_28);
 
 #define PANEL_WIDTH       1024
 #define PANEL_HEIGHT      600
@@ -63,6 +67,15 @@ static lv_obj_t *g_nav_buttons[4];
 static lv_obj_t *g_network_label;
 static lv_obj_t *g_settings_network_label;
 static lv_obj_t *g_settings_probe_label;
+static lv_obj_t *g_settings_account_label;
+static lv_obj_t *g_login_top_label;
+static lv_obj_t *g_login_shade;
+static lv_obj_t *g_login_qr;
+static lv_obj_t *g_login_message;
+static lv_obj_t *g_login_action_label;
+static lv_image_dsc_t g_login_qr_image;
+static uint8_t *g_login_qr_data;
+static uint32_t g_login_qr_revision;
 static volatile enum network_state_e g_network_state =
   NETWORK_INITIALIZING;
 static volatile bool g_network_refresh_requested = true;
@@ -70,6 +83,8 @@ static uint16_t g_network_ping_id;
 static uint16_t g_network_dns_id;
 static void nav_clicked(lv_event_t *event);
 static void show_page(unsigned int page);
+static void apply_mijia_snapshot(
+  const struct home_panel_mijia_snapshot_s *snapshot);
 
 static const char *network_state_name(enum network_state_e state)
 {
@@ -788,7 +803,150 @@ static void device_toggled(lv_event_t *event)
 
 static void login_close(lv_event_t *event)
 {
-  lv_obj_delete_async(lv_event_get_user_data(event));
+  lv_obj_t *shade = lv_event_get_user_data(event);
+
+  g_login_shade = NULL;
+  g_login_qr = NULL;
+  g_login_message = NULL;
+  g_login_action_label = NULL;
+  lv_obj_delete_async(shade);
+}
+
+static bool login_update_qr(
+  const struct home_panel_mijia_snapshot_s *snapshot)
+{
+  lv_image_header_t header;
+  lv_area_t area;
+  uint8_t *data;
+  size_t size;
+  unsigned int dark_pixels = 0;
+  size_t offset;
+  int ret;
+
+  if (snapshot->qr_size == 0)
+    {
+      return false;
+    }
+
+  if (g_login_qr_data != NULL &&
+      g_login_qr_revision == snapshot->qr_revision)
+    {
+      lv_image_set_src(g_login_qr, &g_login_qr_image);
+      if (lv_image_get_src(g_login_qr) != &g_login_qr_image)
+        {
+          syslog(LOG_ERR, "[HOME][UI] qr source rejected on reuse\n");
+          return false;
+        }
+
+      lv_obj_remove_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
+      lv_obj_invalidate(g_login_qr);
+      return true;
+    }
+
+  data = malloc(snapshot->qr_size);
+  if (data == NULL)
+    {
+      return false;
+    }
+
+  ret = home_panel_mijia_copy_qr(snapshot->qr_revision, data,
+                                 snapshot->qr_size, &size);
+  if (ret < 0)
+    {
+      free(data);
+      return false;
+    }
+
+  if (g_login_qr_data != NULL)
+    {
+      lv_image_cache_drop(&g_login_qr_image);
+      lv_image_set_src(g_login_qr, NULL);
+      free(g_login_qr_data);
+    }
+
+  memset(&g_login_qr_image, 0, sizeof(g_login_qr_image));
+  g_login_qr_data = data;
+  g_login_qr_revision = snapshot->qr_revision;
+  g_login_qr_image.header.magic = LV_IMAGE_HEADER_MAGIC;
+  g_login_qr_image.header.cf = LV_COLOR_FORMAT_RGB565;
+  g_login_qr_image.header.w = 240;
+  g_login_qr_image.header.h = 240;
+  g_login_qr_image.header.stride = 480;
+  g_login_qr_image.data_size = size;
+  g_login_qr_image.data = data;
+
+  memset(&header, 0, sizeof(header));
+  if (lv_image_decoder_get_info(&g_login_qr_image, &header) !=
+      LV_RESULT_OK || header.cf != LV_COLOR_FORMAT_RGB565 ||
+      header.w != 240 || header.h != 240 || header.stride != 480)
+    {
+      syslog(LOG_ERR,
+             "[HOME][UI] qr decoder rejected descriptor cf=%u %ux%u stride=%u\n",
+             (unsigned int)header.cf, (unsigned int)header.w,
+             (unsigned int)header.h, (unsigned int)header.stride);
+      free(g_login_qr_data);
+      g_login_qr_data = NULL;
+      g_login_qr_revision = 0;
+      memset(&g_login_qr_image, 0, sizeof(g_login_qr_image));
+      return false;
+    }
+
+  for (offset = 0; offset + 1 < size; offset += 2)
+    {
+      if (data[offset] == 0 && data[offset + 1] == 0)
+        {
+          dark_pixels++;
+        }
+    }
+
+  lv_image_set_src(g_login_qr, &g_login_qr_image);
+  if (lv_image_get_src(g_login_qr) != &g_login_qr_image)
+    {
+      syslog(LOG_ERR, "[HOME][UI] qr source rejected after decode\n");
+      free(g_login_qr_data);
+      g_login_qr_data = NULL;
+      g_login_qr_revision = 0;
+      memset(&g_login_qr_image, 0, sizeof(g_login_qr_image));
+      return false;
+    }
+
+  lv_obj_remove_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_move_foreground(g_login_qr);
+  lv_obj_invalidate(g_login_qr);
+  lv_obj_update_layout(g_login_qr);
+  lv_obj_get_coords(g_login_qr, &area);
+  syslog(LOG_INFO,
+         "[HOME][UI] qr ready RGB565 240x240 bytes=%u dark=%u "
+         "area=%d,%d-%d,%d hidden=%u revision=%u\n",
+         (unsigned int)size, dark_pixels,
+         (int)area.x1, (int)area.y1, (int)area.x2, (int)area.y2,
+         lv_obj_has_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN) ? 1 : 0,
+         (unsigned int)snapshot->qr_revision);
+  return true;
+}
+
+static void login_action(lv_event_t *event)
+{
+  struct home_panel_mijia_snapshot_s snapshot;
+
+  home_panel_mijia_get_snapshot(&snapshot);
+  if (snapshot.state == HOME_PANEL_MIJIA_AUTHENTICATED)
+    {
+      login_close(event);
+      return;
+    }
+
+  if (g_network_state != NETWORK_ONLINE)
+    {
+      lv_label_set_text(g_login_message,
+                        "请先连接可访问互联网的有线网络");
+      return;
+    }
+
+  if (home_panel_mijia_request_login() < 0)
+    {
+      lv_label_set_text(g_login_message, "米家登录服务尚未就绪");
+    }
 }
 
 static void show_login(lv_event_t *event)
@@ -797,12 +955,19 @@ static void show_login(lv_event_t *event)
   lv_obj_t *shade;
   lv_obj_t *dialog;
   lv_obj_t *close;
+  lv_obj_t *action;
   lv_obj_t *label;
-  const char *message;
+  struct home_panel_mijia_snapshot_s snapshot;
 
   (void)event;
 
+  if (g_login_shade != NULL)
+    {
+      return;
+    }
+
   shade = lv_obj_create(screen);
+  g_login_shade = shade;
   lv_obj_remove_style_all(shade);
   lv_obj_set_size(shade, PANEL_WIDTH, PANEL_HEIGHT);
   lv_obj_set_pos(shade, 0, 0);
@@ -810,51 +975,151 @@ static void show_login(lv_event_t *event)
   lv_obj_set_style_bg_opa(shade, LV_OPA_70, 0);
 
   dialog = lv_obj_create(shade);
-  lv_obj_set_size(dialog, 440, 300);
+  lv_obj_set_size(dialog, 680, 410);
   lv_obj_center(dialog);
   lv_obj_set_style_radius(dialog, 8, 0);
   lv_obj_set_style_border_width(dialog, 1, 0);
   lv_obj_set_style_border_color(dialog, lv_color_hex(0x343b44), 0);
   lv_obj_set_style_bg_color(dialog, lv_color_hex(COLOR_SURFACE), 0);
-  lv_obj_set_style_pad_all(dialog, 28, 0);
+  lv_obj_set_style_pad_all(dialog, 24, 0);
+  lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
 
-  label = make_label(dialog, "米家账号登录", 0, 0,
+  label = make_label(dialog, "米家账号登录", 282, 8,
                      lv_color_hex(COLOR_TEXT), &home_panel_misans_18);
   lv_obj_set_style_text_font(label, &home_panel_misans_18, 0);
 
-  if (g_network_state == NETWORK_ONLINE)
-    {
-      message = "互联网已连接。米家授权服务接入后将在此\n"
-                "显示登录二维码，账号凭据仅保存在服务器。";
-    }
-  else if (g_network_state == NETWORK_NO_INTERNET)
-    {
-      message = "网线已连接，但当前无法访问互联网。请检查\n"
-                "路由器和上级网络后重新检测。";
-    }
-  else
-    {
-      message = "请先连接有线网络。联网后将在此显示\n"
-                "米家授权二维码，账号凭据仅保存在服务器。";
-    }
+  g_login_qr = lv_image_create(dialog);
+  lv_obj_set_size(g_login_qr, 256, 256);
+  lv_image_set_inner_align(g_login_qr, LV_IMAGE_ALIGN_CENTER);
+  lv_obj_set_pos(g_login_qr, 18, 62);
+  lv_obj_set_style_border_color(g_login_qr, lv_color_hex(0xffffff), 0);
+  lv_obj_set_style_border_width(g_login_qr, 8, 0);
+  lv_obj_add_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
 
-  label = make_label(dialog, message,
-                     0, 62, lv_color_hex(COLOR_MUTED),
+  g_login_message = make_label(dialog, "正在准备米家登录",
+                               282, 78, lv_color_hex(COLOR_MUTED),
+                               &home_panel_misans_18);
+  lv_obj_set_width(g_login_message, 340);
+  lv_label_set_long_mode(g_login_message, LV_LABEL_LONG_WRAP);
+  lv_obj_set_style_text_line_space(g_login_message, 12, 0);
+
+  label = make_label(dialog,
+                     "请使用米家 App 扫码。账号认证数据只保存在\n"
+                     "本地服务端的加密保险箱中。",
+                     282, 164, lv_color_hex(COLOR_MUTED),
                      &home_panel_misans_18);
-  lv_obj_set_style_text_line_space(label, 12, 0);
+  lv_obj_set_style_text_line_space(label, 10, 0);
 
   close = lv_button_create(dialog);
-  lv_obj_set_size(close, 128, 48);
-  lv_obj_align(close, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+  lv_obj_set_size(close, 44, 44);
+  lv_obj_align(close, LV_ALIGN_TOP_RIGHT, 0, 0);
   lv_obj_set_style_radius(close, 8, 0);
-  lv_obj_set_style_bg_color(close, lv_color_hex(COLOR_BLUE), 0);
-  lv_obj_set_style_bg_color(close, lv_color_hex(0x3475d6),
+  lv_obj_set_style_bg_color(close, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_color(close, lv_color_hex(0x343b44),
                             LV_STATE_PRESSED);
   lv_obj_add_event_cb(close, login_close, LV_EVENT_CLICKED, shade);
   label = lv_label_create(close);
-  lv_label_set_text(label, "知道了");
-  set_chinese_font(label);
+  lv_label_set_text(label, LV_SYMBOL_CLOSE);
+  lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
   lv_obj_center(label);
+
+  action = lv_button_create(dialog);
+  lv_obj_set_size(action, 144, 50);
+  lv_obj_align(action, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
+  lv_obj_set_style_radius(action, 8, 0);
+  lv_obj_set_style_bg_color(action, lv_color_hex(COLOR_BLUE), 0);
+  lv_obj_set_style_bg_color(action, lv_color_hex(0x3475d6),
+                            LV_STATE_PRESSED);
+  lv_obj_add_event_cb(action, login_action, LV_EVENT_CLICKED, shade);
+  g_login_action_label = lv_label_create(action);
+  lv_label_set_text(g_login_action_label, "重新生成");
+  set_chinese_font(g_login_action_label);
+  lv_obj_center(g_login_action_label);
+
+  home_panel_mijia_get_snapshot(&snapshot);
+  if (snapshot.state == HOME_PANEL_MIJIA_AUTHENTICATED)
+    {
+      apply_mijia_snapshot(&snapshot);
+    }
+  else if (g_network_state == NETWORK_ONLINE)
+    {
+      home_panel_mijia_request_login();
+    }
+  else if (g_network_state != NETWORK_ONLINE)
+    {
+      lv_label_set_text(g_login_message,
+                        "请先连接可访问互联网的有线网络");
+    }
+}
+
+static void apply_mijia_snapshot(
+  const struct home_panel_mijia_snapshot_s *snapshot)
+{
+  char text[160];
+
+  if (g_login_top_label != NULL)
+    {
+      lv_label_set_text(g_login_top_label,
+                        snapshot->state == HOME_PANEL_MIJIA_AUTHENTICATED ?
+                        "米家已登录" : "登录米家");
+    }
+
+  if (g_settings_account_label != NULL)
+    {
+      if (snapshot->state == HOME_PANEL_MIJIA_AUTHENTICATED)
+        {
+          snprintf(text, sizeof(text), "%s · %u/%u 台在线",
+                   snapshot->home_name[0] != '\0' ?
+                   snapshot->home_name : "米家账号",
+                   snapshot->online_count, snapshot->device_count);
+          lv_label_set_text(g_settings_account_label, text);
+          lv_obj_set_style_text_color(g_settings_account_label,
+                                      lv_color_hex(COLOR_GREEN), 0);
+        }
+      else
+        {
+          lv_label_set_text(g_settings_account_label, "未登录");
+          lv_obj_set_style_text_color(g_settings_account_label,
+                                      lv_color_hex(COLOR_MUTED), 0);
+        }
+    }
+
+  if (g_login_shade == NULL)
+    {
+      return;
+    }
+
+  lv_label_set_text(g_login_message, snapshot->message);
+  if (snapshot->state == HOME_PANEL_MIJIA_WAITING)
+    {
+      if (!login_update_qr(snapshot))
+        {
+          lv_obj_add_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
+          lv_label_set_text(g_login_message, "登录二维码加载失败");
+        }
+
+      lv_label_set_text(g_login_action_label, "重新生成");
+    }
+  else if (snapshot->state == HOME_PANEL_MIJIA_AUTHENTICATED)
+    {
+      lv_obj_add_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
+      snprintf(text, sizeof(text),
+               "已登录 %s\n共 %u 台设备，%u 台在线",
+               snapshot->home_name[0] != '\0' ?
+               snapshot->home_name : "米家账号",
+               snapshot->device_count, snapshot->online_count);
+      lv_label_set_text(g_login_message, text);
+      lv_obj_set_style_text_color(g_login_message,
+                                  lv_color_hex(COLOR_GREEN), 0);
+      lv_label_set_text(g_login_action_label, "完成");
+    }
+  else
+    {
+      lv_obj_add_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
+      lv_label_set_text(g_login_action_label,
+                        snapshot->state == HOME_PANEL_MIJIA_STARTING ?
+                        "连接中" : "重新生成");
+    }
 }
 
 static lv_obj_t *make_nav_button(lv_obj_t *parent, const char *symbol,
@@ -938,12 +1203,12 @@ static void make_device_card(lv_obj_t *parent, int x, const char *symbol,
   lv_obj_set_style_pad_all(card, 18, 0);
   lv_obj_clear_flag(card, LV_OBJ_FLAG_SCROLLABLE);
 
-  make_label(card, symbol, 0, 0, accent, &lv_font_montserrat_28);
+  make_label(card, symbol, 0, 0, accent, &lv_font_montserrat_16);
   make_label(card, room, 0, 58, lv_color_hex(COLOR_MUTED),
              &home_panel_misans_18);
   make_label(card, name, 0, 88, lv_color_hex(COLOR_TEXT),
              &home_panel_misans_18);
-  label = make_label(card, value, 0, 122, accent, &lv_font_montserrat_28);
+  label = make_label(card, value, 0, 122, accent, &home_panel_digits_28);
   (void)label;
 
   state = make_label(card, checked ? "已开启" : "已关闭", 0, 169,
@@ -1117,8 +1382,9 @@ static void create_settings_page(void)
                                           lv_color_hex(COLOR_ORANGE));
   make_info_row(panel, "地址获取", "DHCP 自动", 140,
                 lv_color_hex(COLOR_TEXT));
-  make_info_row(panel, "米家账号", "未登录", 198,
-                lv_color_hex(COLOR_MUTED));
+  g_settings_account_label = make_info_row(panel, "米家账号", "未登录",
+                                            198,
+                                            lv_color_hex(COLOR_MUTED));
   g_status_label = make_label(g_content, "系统每 15 秒自动检测网络",
                               30, 416, lv_color_hex(COLOR_MUTED),
                               &home_panel_misans_18);
@@ -1130,6 +1396,7 @@ static void create_settings_page(void)
 
 static void show_page(unsigned int page)
 {
+  struct home_panel_mijia_snapshot_s snapshot;
   unsigned int i;
 
   if (page > 3)
@@ -1147,6 +1414,7 @@ static void show_page(unsigned int page)
   g_status_label = NULL;
   g_settings_network_label = NULL;
   g_settings_probe_label = NULL;
+  g_settings_account_label = NULL;
   lv_obj_clean(g_content);
   if (page == 0)
     {
@@ -1166,6 +1434,8 @@ static void show_page(unsigned int page)
     }
 
   lv_obj_invalidate(g_content);
+  home_panel_mijia_get_snapshot(&snapshot);
+  apply_mijia_snapshot(&snapshot);
 }
 
 static void create_home_screen(void)
@@ -1174,7 +1444,6 @@ static void create_home_screen(void)
   lv_obj_t *topbar;
   lv_obj_t *nav;
   lv_obj_t *login;
-  lv_obj_t *label;
 
   lv_obj_set_style_bg_color(screen, lv_color_hex(COLOR_BG), 0);
   lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, 0);
@@ -1188,7 +1457,7 @@ static void create_home_screen(void)
   lv_obj_set_style_bg_opa(topbar, LV_OPA_COVER, 0);
 
   make_label(topbar, "08:42", 24, 17, lv_color_hex(COLOR_TEXT),
-             &lv_font_montserrat_28);
+             &home_panel_digits_28);
   make_label(topbar, "7月14日  星期二", 132, 26,
              lv_color_hex(COLOR_MUTED), &home_panel_misans_18);
   g_network_label = make_label(topbar,
@@ -1205,10 +1474,10 @@ static void create_home_screen(void)
   lv_obj_set_style_bg_color(login, lv_color_hex(0x3475d6),
                             LV_STATE_PRESSED);
   lv_obj_add_event_cb(login, show_login, LV_EVENT_CLICKED, NULL);
-  label = lv_label_create(login);
-  lv_label_set_text(label, "登录米家");
-  set_chinese_font(label);
-  lv_obj_center(label);
+  g_login_top_label = lv_label_create(login);
+  lv_label_set_text(g_login_top_label, "登录米家");
+  set_chinese_font(g_login_top_label);
+  lv_obj_center(g_login_top_label);
 
   nav = lv_obj_create(screen);
   lv_obj_remove_style_all(nav);
@@ -1238,6 +1507,8 @@ int main(int argc, char *argv[])
   lv_nuttx_dsc_t info;
   lv_nuttx_result_t result;
   enum network_state_e displayed_state = (enum network_state_e)-1;
+  struct home_panel_mijia_snapshot_s mijia_snapshot;
+  uint32_t displayed_mijia_revision = UINT32_MAX;
   int ret;
 
   (void)argc;
@@ -1280,6 +1551,12 @@ int main(int argc, char *argv[])
       fprintf(stderr, "home_panel: network monitor failed: %d\n", ret);
     }
 
+  ret = home_panel_mijia_initialize();
+  if (ret != 0)
+    {
+      fprintf(stderr, "home_panel: Mijia client failed: %d\n", ret);
+    }
+
   lv_obj_invalidate(lv_screen_active());
   lv_refr_now(result.disp);
 
@@ -1294,6 +1571,16 @@ int main(int argc, char *argv[])
           lv_refr_now(result.disp);
           syslog(LOG_INFO, "[HOME][UI] network=%s\n",
                  network_state_name(displayed_state));
+        }
+
+      home_panel_mijia_get_snapshot(&mijia_snapshot);
+      if (displayed_mijia_revision != mijia_snapshot.revision)
+        {
+          displayed_mijia_revision = mijia_snapshot.revision;
+          apply_mijia_snapshot(&mijia_snapshot);
+          lv_refr_now(result.disp);
+          syslog(LOG_INFO, "[HOME][UI] mijia=%s\n",
+                 home_panel_mijia_state_name(mijia_snapshot.state));
         }
 
       delay = lv_timer_handler();

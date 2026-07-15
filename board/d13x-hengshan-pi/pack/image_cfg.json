@@ -15,7 +15,7 @@
         "info": { // Header information about image
             "platform": "d13x",
             "product": "hengshan-pi",
-            "version": "1.2.4.4",
+            "version": "1.3.4.5",
             "media": {
                 "type": "spi-nor",
                 "device_id": 0,

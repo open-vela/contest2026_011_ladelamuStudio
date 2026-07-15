@@ -13,6 +13,7 @@
   .global __start
   .global _sbss
   .global _ebss
+  .global _eidle_stack
   .global _sdata
   .global _edata
   .global _eronly
@@ -54,14 +55,11 @@ __start:
   j     .Lclear_bss
 .Lbss_done:
 
-  /* ITB loads the complete flat binary at its linked SRAM address, so .data
-   * is already initialized.  Put the IDLE stack immediately after BSS.
+  /* ITB loads the complete flat binary at its linked PSRAM address, so .data
+   * is already initialized.  The linker reserves the IDLE stack after BSS.
    */
 
-  la    sp, _ebss
-  li    t0, CONFIG_IDLETHREAD_STACKSIZE
-  add   sp, sp, t0
-  andi  sp, sp, -16
+  la    sp, _eidle_stack
 
   /* 跳转到 NuttX C 入口 (artinchip_start.c 中的 __start_c) */
 
