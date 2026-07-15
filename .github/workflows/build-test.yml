@@ -133,9 +133,17 @@ jobs:
           test -s "$elf"
           sha256sum "$image" "$elf" | sed 's#  .*/#  #' > SHA256SUMS
 
-          tag_sha=$(gh api \
+          tag_sha=""
+          if existing_tag_sha=$(gh api \
             "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" \
-            --jq '.object.sha' 2>/dev/null || true)
+            --jq '.object.sha' 2>/dev/null); then
+            if [[ ! "$existing_tag_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "标签 ${RELEASE_TAG} 返回了无效 SHA: ${existing_tag_sha}" >&2
+              exit 1
+            fi
+
+            tag_sha="$existing_tag_sha"
+          fi
           if [[ -n "$tag_sha" && "$tag_sha" != "$GITHUB_SHA" ]]; then
             echo "标签 ${RELEASE_TAG} 已指向 ${tag_sha}，不能改写为 ${GITHUB_SHA}" >&2
             exit 1
