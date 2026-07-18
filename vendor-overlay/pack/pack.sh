@@ -103,16 +103,32 @@ python3 $TOOLDIR/fsinstall.py --sdkout $PRJ_OUT --clean rodata/,data/
 python3 $TOOLDIR/fsinstall.py --sdkout $PRJ_OUT --src $SDK_ROOT/vendor/artinchip/pack/resources/rodata/ --dst rodata/
 python3 $TOOLDIR/fsinstall.py --sdkout $PRJ_OUT --src $SDK_ROOT/vendor/artinchip/pack/resources/data/ --dst data/
 
+FONT_SOURCE="$SDK_ROOT/vendor/artinchip/pack/resources/font/MiSans-Regular-18-full.bin"
+FONT_TARGET="$PRJ_OUT/MiSans-Regular-18-full.bin"
+FONT_LIMIT=$((8 * 1024 * 1024))
+if [ ! -f "$FONT_SOURCE" ]; then
+    echo "Error: precompiled full MiSans font not found: $FONT_SOURCE" >&2
+    exit 1
+fi
+FONT_SIZE=$(stat -c %s "$FONT_SOURCE")
+if [ "$FONT_SIZE" -gt "$FONT_LIMIT" ]; then
+    echo "Error: MiSans font ($FONT_SIZE bytes) exceeds 8 MiB partition" >&2
+    exit 1
+fi
+cp -f "$FONT_SOURCE" "$FONT_TARGET"
+
 # 6.  generate file system image (FATFS and LittleFS)
 pushd $PRJ_OUT > /dev/null
-if ! python3 $TOOLDIR/makefatfs.py --fullpart --volab default --cluster 8 --sector 512 --tooldir $TOOLDIR --inputdir rodata --outfile $PRJ_OUT/rodata.fatfs; then
-    echo ">>> Sparse FAT conversion unavailable; validating raw FAT image"
-    FAT_CHECK_DIR=$(mktemp -d)
-    trap 'rm -rf "$FAT_CHECK_DIR"' EXIT
-    $TOOLDIR/mcopy -i $PRJ_OUT/rodata.fatfs -s '::/*' "$FAT_CHECK_DIR/"
-    diff -qr "$PRJ_OUT/rodata" "$FAT_CHECK_DIR"
-    rm -rf "$FAT_CHECK_DIR"
-    trap - EXIT
+if grep -q '"rodata"[[:space:]]*:' "$PRJ_OUT/image_cfg.json"; then
+    if ! python3 $TOOLDIR/makefatfs.py --fullpart --volab default --cluster 8 --sector 512 --tooldir $TOOLDIR --inputdir rodata --outfile $PRJ_OUT/rodata.fatfs; then
+        echo ">>> Sparse FAT conversion unavailable; validating raw FAT image"
+        FAT_CHECK_DIR=$(mktemp -d)
+        trap 'rm -rf "$FAT_CHECK_DIR"' EXIT
+        $TOOLDIR/mcopy -i $PRJ_OUT/rodata.fatfs -s '::/*' "$FAT_CHECK_DIR/"
+        diff -qr "$PRJ_OUT/rodata" "$FAT_CHECK_DIR"
+        rm -rf "$FAT_CHECK_DIR"
+        trap - EXIT
+    fi
 fi
 python3 $TOOLDIR/makelittlefs.py --pagesize 256 --blocksize 4096 --tooldir $TOOLDIR --inputdir data/ --outfile $PRJ_OUT/data.lfs
 popd > /dev/null

@@ -20,9 +20,11 @@
 #include <netutils/webclient.h>
 
 #include "home_panel_mijia_client.h"
+#include "home_panel_mijia_model.h"
 
 #define MIJIA_HTTP_BUFFER_SIZE       1024
 #define MIJIA_JSON_BUFFER_SIZE       2048
+#define MIJIA_DELTA_RESPONSE_SIZE    16384
 #define MIJIA_LOGIN_POLL_SECONDS     2
 #define MIJIA_LOGIN_MAX_POLLS        90
 #define MIJIA_CLIENT_THREAD_STACK    16384
@@ -66,8 +68,8 @@ struct mijia_client_s
   size_t qr_size;
   bool command_busy;
   char token[128];
-  char *family_json;
-  size_t family_json_size;
+  bool family_model_valid;
+  struct home_panel_family_model_s family_model;
   struct home_panel_mijia_snapshot_s snapshot;
   struct home_panel_mijia_family_snapshot_s family_snapshot;
   struct home_panel_mijia_command_snapshot_s command_snapshot;
@@ -103,6 +105,8 @@ struct mijia_command_request_s
   enum mijia_command_kind_e kind;
   uint32_t generation;
   bool target;
+  uint16_t siid;
+  uint16_t piid;
   char token[128];
   char identifier[80];
   char property_name[48];
@@ -779,6 +783,45 @@ out:
   return ret;
 }
 
+static int mijia_reunlock_persisted_session(const char *active_token)
+{
+  char stored_token[128];
+  char password[64];
+  unsigned int http_status = 0;
+  int ret;
+
+  ret = mijia_load_credentials(stored_token, sizeof(stored_token),
+                               password, sizeof(password));
+  if (ret < 0)
+    {
+      goto out;
+    }
+
+  if (strcmp(stored_token, active_token) != 0)
+    {
+      ret = -EACCES;
+      goto out;
+    }
+
+  ret = mijia_unlock_session(active_token, password, &http_status);
+  if (ret == 0)
+    {
+      syslog(LOG_INFO,
+             "[HOME][MIJIA] server vault unlocked after restart\n");
+    }
+  else
+    {
+      syslog(LOG_WARNING,
+             "[HOME][MIJIA] server re-unlock failed ret=%d status=%u\n",
+             ret, http_status);
+    }
+
+out:
+  memset(stored_token, 0, sizeof(stored_token));
+  memset(password, 0, sizeof(password));
+  return ret;
+}
+
 static bool mijia_json_uint(cJSON *object, const char *name,
                             unsigned int *value)
 {
@@ -827,7 +870,6 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   cJSON *scenes;
   cJSON *summary;
   cJSON *root = NULL;
-  char *old_json = NULL;
   char *response;
   char url[512];
   char buffer[MIJIA_HTTP_BUFFER_SIZE];
@@ -838,6 +880,7 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   unsigned int room_count;
   unsigned int scene_count;
   unsigned int server_revision;
+  struct home_panel_family_model_s *parsed_model = NULL;
   int ret = -ENOMEM;
 
   response = malloc(CONFIG_D13X_HOME_PANEL_MIJIA_MAX_RESPONSE);
@@ -872,7 +915,8 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   ret = webclient_perform(&context);
   if (ret < 0 || context.http_status < 200 || context.http_status >= 300)
     {
-      ret = ret < 0 ? ret : -EPROTO;
+      ret = ret < 0 ? ret :
+            context.http_status == 423 ? -EACCES : -EPROTO;
       goto out;
     }
 
@@ -908,6 +952,24 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   primary_home = mijia_json_string(summary, "primary_home_name");
   mijia_copy_string(home_name, home_capacity, primary_home);
 
+  /* Parsing the full family response is intentionally done in this
+   * low-priority worker.  The LVGL thread only copies the compact model,
+   * so a cloud update cannot stall input while cJSON walks the payload.
+   */
+
+  parsed_model = malloc(sizeof(*parsed_model));
+  if (parsed_model == NULL)
+    {
+      ret = -ENOMEM;
+      goto out;
+    }
+
+  ret = home_panel_mijia_model_parse(response, 0, parsed_model);
+  if (ret < 0)
+    {
+      goto out;
+    }
+
   pthread_mutex_lock(&g_mijia.lock);
   if (generation != g_mijia.request_generation)
     {
@@ -916,10 +978,10 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
       goto out;
     }
 
-  old_json = g_mijia.family_json;
-  g_mijia.family_json = response;
-  g_mijia.family_json_size = sink.length;
   g_mijia.family_snapshot.revision = ++g_mijia.next_family_revision;
+  parsed_model->revision = g_mijia.family_snapshot.revision;
+  memcpy(&g_mijia.family_model, parsed_model, sizeof(*parsed_model));
+  g_mijia.family_model_valid = true;
   g_mijia.family_snapshot.server_revision = server_revision;
   g_mijia.family_snapshot.generated_at = generated_at;
   g_mijia.family_snapshot.json_size = sink.length;
@@ -938,8 +1000,6 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
          server_revision, (unsigned int)sink.length, home_count, room_count,
          *device_count, *online_count, scene_count, detail_error_count);
   pthread_mutex_unlock(&g_mijia.lock);
-  response = NULL;
-  free(old_json);
   ret = 0;
 
 out:
@@ -951,13 +1011,16 @@ out:
     }
 
   cJSON_Delete(root);
+  free(parsed_model);
   free(response);
   return ret;
 }
 
 static int mijia_wait_for_changes(const char *token, uint32_t generation,
-                                  uint32_t after, bool *changed)
+                                  uint32_t after, bool *changed,
+                                  bool *full_resync)
 {
+  static unsigned int quiet_delta_count;
   char authorization[192];
   const char *headers[2];
   struct webclient_context context;
@@ -970,16 +1033,22 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   char url[512];
   char buffer[MIJIA_HTTP_BUFFER_SIZE];
   const char *method;
+  const char *did;
+  unsigned int base_revision;
+  unsigned int generated_at;
   unsigned int online_changes = 0;
   unsigned int property_changes = 0;
   unsigned int revision;
+  int online_count_delta = 0;
+  bool model_changed = false;
   bool resync_required;
   bool server_stale;
   int length;
   int ret = -ENOMEM;
 
   *changed = false;
-  response = malloc(CONFIG_D13X_HOME_PANEL_MIJIA_MAX_RESPONSE);
+  *full_resync = false;
+  response = malloc(MIJIA_DELTA_RESPONSE_SIZE);
   if (response == NULL)
     {
       return -ENOMEM;
@@ -1002,7 +1071,7 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   headers[0] = authorization;
   headers[1] = "Connection: close";
   sink.data = response;
-  sink.capacity = CONFIG_D13X_HOME_PANEL_MIJIA_MAX_RESPONSE;
+  sink.capacity = MIJIA_DELTA_RESPONSE_SIZE;
   response[0] = '\0';
 
   webclient_set_defaults(&context);
@@ -1018,7 +1087,8 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   ret = webclient_perform(&context);
   if (ret < 0 || context.http_status < 200 || context.http_status >= 300)
     {
-      ret = ret < 0 ? ret : -EPROTO;
+      ret = ret < 0 ? ret :
+            context.http_status == 423 ? -EACCES : -EPROTO;
       goto out;
     }
 
@@ -1032,8 +1102,9 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   changes = root == NULL ? NULL :
             cJSON_GetObjectItemCaseSensitive(root, "changes");
   if (!cJSON_IsArray(changes) ||
+      !mijia_json_uint(root, "base_revision", &base_revision) ||
       !mijia_json_uint(root, "revision", &revision) ||
-      revision < after)
+      !mijia_json_uint(root, "generated_at", &generated_at))
     {
       ret = -EBADMSG;
       goto out;
@@ -1054,6 +1125,23 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
     }
   server_stale = cJSON_IsTrue(item);
 
+  if (resync_required)
+    {
+      *changed = true;
+      *full_resync = true;
+      syslog(LOG_INFO,
+             "[HOME][SYNC] delta gap local=%u server=%u; full resync\n",
+             (unsigned int)after, revision);
+      ret = 0;
+      goto out;
+    }
+
+  if (revision < after || base_revision != after)
+    {
+      ret = -EBADMSG;
+      goto out;
+    }
+
   cJSON_ArrayForEach(item, changes)
     {
       method = mijia_json_string(item, "method");
@@ -1071,22 +1159,210 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
         {
           online_changes += cJSON_GetArraySize(params);
         }
+      else
+        {
+          *changed = true;
+          *full_resync = true;
+          ret = 0;
+          goto out;
+        }
     }
 
-  if (server_stale)
+  if (server_stale && cJSON_GetArraySize(changes) == 0)
     {
       ret = -EAGAIN;
       goto out;
     }
 
-  *changed = resync_required || cJSON_GetArraySize(changes) > 0;
-  if (*changed)
+  if (cJSON_GetArraySize(changes) == 0)
     {
+      pthread_mutex_lock(&g_mijia.lock);
+      if (generation != g_mijia.request_generation ||
+          g_mijia.family_snapshot.server_revision != after)
+        {
+          pthread_mutex_unlock(&g_mijia.lock);
+          ret = -ECANCELED;
+          goto out;
+        }
+
+      g_mijia.family_snapshot.server_revision = revision;
+      g_mijia.family_snapshot.generated_at = generated_at;
+      g_mijia.family_snapshot.json_size = sink.length;
+      g_mijia.family_snapshot.consecutive_failures = 0;
+      g_mijia.family_snapshot.stale = false;
+      pthread_mutex_unlock(&g_mijia.lock);
+      ret = 0;
+      goto out;
+    }
+
+  pthread_mutex_lock(&g_mijia.lock);
+  if (generation != g_mijia.request_generation ||
+      !g_mijia.family_model_valid)
+    {
+      pthread_mutex_unlock(&g_mijia.lock);
+      ret = -ECANCELED;
+      goto out;
+    }
+
+  if (g_mijia.family_snapshot.server_revision != after)
+    {
+      pthread_mutex_unlock(&g_mijia.lock);
+      *changed = true;
+      *full_resync = true;
+      ret = 0;
+      goto out;
+    }
+
+  cJSON_ArrayForEach(item, changes)
+    {
+      method = mijia_json_string(item, "method");
+      params = cJSON_GetObjectItemCaseSensitive(item, "params");
+      if (strcmp(method, "device_online_changed") == 0)
+        {
+          cJSON *param;
+
+          cJSON_ArrayForEach(param, params)
+            {
+              cJSON *previous = cJSON_GetObjectItemCaseSensitive(
+                param, "previous_value");
+              cJSON *value = cJSON_GetObjectItemCaseSensitive(param,
+                                                               "value");
+              int apply_ret;
+
+              did = mijia_json_string(param, "did");
+              if (did == NULL || !cJSON_IsBool(previous) ||
+                  !cJSON_IsBool(value))
+                {
+                  pthread_mutex_unlock(&g_mijia.lock);
+                  ret = -EBADMSG;
+                  goto out;
+                }
+
+              if (cJSON_IsTrue(previous) != cJSON_IsTrue(value))
+                {
+                  online_count_delta += cJSON_IsTrue(value) ? 1 : -1;
+                }
+
+              apply_ret = home_panel_mijia_model_apply_online(
+                &g_mijia.family_model, did, cJSON_IsTrue(value));
+              if (apply_ret == -ENOENT)
+                {
+                  continue;
+                }
+              if (apply_ret < 0)
+                {
+                  pthread_mutex_unlock(&g_mijia.lock);
+                  ret = apply_ret;
+                  goto out;
+                }
+
+              model_changed |= apply_ret > 0;
+            }
+        }
+      else
+        {
+          cJSON *param;
+
+          cJSON_ArrayForEach(param, params)
+            {
+              cJSON *code_item;
+              cJSON *value;
+              unsigned int siid;
+              unsigned int piid;
+              int apply_ret;
+
+              did = mijia_json_string(param, "did");
+              code_item = cJSON_GetObjectItemCaseSensitive(param, "code");
+              value = cJSON_GetObjectItemCaseSensitive(param, "value");
+              if (did == NULL || !mijia_json_uint(param, "siid", &siid) ||
+                  !mijia_json_uint(param, "piid", &piid) ||
+                  siid == 0 || siid > UINT16_MAX ||
+                  piid == 0 || piid > UINT16_MAX ||
+                  !cJSON_IsNumber(code_item))
+                {
+                  pthread_mutex_unlock(&g_mijia.lock);
+                  ret = -EBADMSG;
+                  goto out;
+                }
+
+              if (code_item->valueint != 0)
+                {
+                  continue;
+                }
+
+              apply_ret = home_panel_mijia_model_apply_property(
+                &g_mijia.family_model, did, (uint16_t)siid,
+                (uint16_t)piid, cJSON_IsBool(value), cJSON_IsTrue(value),
+                cJSON_IsNumber(value),
+                cJSON_IsNumber(value) ? value->valueint : 0);
+              if (apply_ret == -ENOENT)
+                {
+                  continue;
+                }
+              if (apply_ret < 0)
+                {
+                  pthread_mutex_unlock(&g_mijia.lock);
+                  ret = apply_ret;
+                  goto out;
+                }
+
+              model_changed |= apply_ret > 0;
+            }
+        }
+    }
+
+  g_mijia.family_snapshot.server_revision = revision;
+  g_mijia.family_snapshot.generated_at = generated_at;
+  g_mijia.family_snapshot.json_size = sink.length;
+  g_mijia.family_snapshot.consecutive_failures = 0;
+  g_mijia.family_snapshot.stale = false;
+  if (online_count_delta > 0)
+    {
+      unsigned int delta = (unsigned int)online_count_delta;
+
+      if (delta <= g_mijia.family_snapshot.device_count -
+                   g_mijia.family_snapshot.online_count)
+        {
+          g_mijia.family_snapshot.online_count += delta;
+        }
+    }
+  else if (online_count_delta < 0)
+    {
+      unsigned int delta = (unsigned int)(-online_count_delta);
+
+      if (delta <= g_mijia.family_snapshot.online_count)
+        {
+          g_mijia.family_snapshot.online_count -= delta;
+        }
+    }
+  if (model_changed)
+    {
+      home_panel_mijia_model_refresh_rooms(&g_mijia.family_model);
+      g_mijia.family_snapshot.revision = ++g_mijia.next_family_revision;
+      g_mijia.family_model.revision = g_mijia.family_snapshot.revision;
+    }
+  pthread_mutex_unlock(&g_mijia.lock);
+
+  *changed = model_changed;
+  if (model_changed)
+    {
+      quiet_delta_count = 0;
       syslog(LOG_INFO,
-             "[HOME][SYNC] event server=%u methods=%u properties=%u "
-             "online=%u resync=%u\n",
-             revision, (unsigned int)cJSON_GetArraySize(changes),
-             property_changes, online_changes, resync_required ? 1 : 0);
+             "[HOME][SYNC] delta server=%u bytes=%u methods=%u "
+             "properties=%u online=%u\n",
+             revision, (unsigned int)sink.length,
+             (unsigned int)cJSON_GetArraySize(changes),
+             property_changes, online_changes);
+    }
+  else
+    {
+      quiet_delta_count++;
+      if (quiet_delta_count % 30 == 0)
+        {
+          syslog(LOG_INFO,
+                 "[HOME][SYNC] quiet deltas=%u server=%u bytes=%u\n",
+                 quiet_delta_count, revision, (unsigned int)sink.length);
+        }
     }
   ret = 0;
 
@@ -1394,10 +1670,7 @@ static void mijia_publish_command(
 static void *mijia_command_worker(void *arg)
 {
   struct mijia_command_request_s *request = arg;
-  char home_name[64];
   char response[MIJIA_JSON_BUFFER_SIZE];
-  unsigned int device_count;
-  unsigned int online_count;
   unsigned int http_status = 0;
   cJSON *accepted_item;
   cJSON *confirmed_item;
@@ -1410,6 +1683,7 @@ static void *mijia_command_worker(void *arg)
   int code = -1;
   int ret = -ENOMEM;
 
+  response[0] = '\0';
   payload = cJSON_CreateObject();
   if (payload == NULL)
     {
@@ -1421,6 +1695,8 @@ static void *mijia_command_worker(void *arg)
       cJSON_AddStringToObject(payload, "did", request->identifier);
       cJSON_AddStringToObject(payload, "prop_name",
                              request->property_name);
+      cJSON_AddNumberToObject(payload, "siid", request->siid);
+      cJSON_AddNumberToObject(payload, "piid", request->piid);
       cJSON_AddBoolToObject(payload, "value", request->target);
       path = "/api/device/property";
     }
@@ -1478,23 +1754,15 @@ static void *mijia_command_worker(void *arg)
                         confirmed ? "设备状态已确认" :
                                     "指令已接受，等待状态确认");
 
-  ret = mijia_fetch_family(request->token, request->generation,
-                           home_name, sizeof(home_name), &device_count,
-                           &online_count);
-  if (ret == 0)
-    {
-      mijia_refresh_summary(request->generation, home_name, device_count,
-                            online_count);
-    }
-
   ret = 0;
 
 out:
   if (ret < 0)
     {
       syslog(LOG_WARNING,
-             "[HOME][MIJIA] command failed ret=%d status=%u kind=%u\n",
-             ret, http_status, (unsigned int)request->kind);
+             "[HOME][MIJIA] command failed ret=%d status=%u kind=%u "
+             "response=%.160s\n",
+             ret, http_status, (unsigned int)request->kind, response);
       mijia_publish_command(request, HOME_PANEL_MIJIA_COMMAND_ERROR,
                             code, "设备操作失败");
     }
@@ -1509,7 +1777,8 @@ out:
 static int mijia_start_command(enum mijia_command_kind_e kind,
                                const char *identifier,
                                const char *display_name,
-                               const char *property_name, bool target)
+                               const char *property_name,
+                               uint16_t siid, uint16_t piid, bool target)
 {
   struct mijia_command_request_s *request;
   pthread_attr_t attr;
@@ -1547,6 +1816,8 @@ static int mijia_start_command(enum mijia_command_kind_e kind,
   request->kind = kind;
   request->generation = g_mijia.request_generation;
   request->target = target;
+  request->siid = siid;
+  request->piid = piid;
   mijia_copy_string(request->token, sizeof(request->token), g_mijia.token);
   mijia_copy_string(request->identifier, sizeof(request->identifier),
                     identifier);
@@ -1600,6 +1871,7 @@ static void *mijia_worker(void *arg)
   bool restoring;
   bool authenticated;
   bool changed;
+  bool full_resync;
   int ret;
 
   (void)arg;
@@ -1674,13 +1946,20 @@ static void *mijia_worker(void *arg)
       while (mijia_generation_active(generation))
         {
           ret = mijia_wait_for_changes(token, generation,
-                                       server_revision, &changed);
+                                       server_revision, &changed,
+                                       &full_resync);
           if (ret == -ECANCELED)
             {
               break;
             }
           if (ret < 0)
             {
+              if (ret == -EACCES &&
+                  mijia_reunlock_persisted_session(token) == 0)
+                {
+                  continue;
+                }
+
               mijia_mark_sync_failure(generation, ret);
               if (!mijia_wait_for_refresh(generation))
                 {
@@ -1688,28 +1967,48 @@ static void *mijia_worker(void *arg)
                 }
               continue;
             }
-          if (!changed)
+          if (!changed && !full_resync)
             {
+              pthread_mutex_lock(&g_mijia.lock);
+              server_revision = g_mijia.family_snapshot.server_revision;
+              pthread_mutex_unlock(&g_mijia.lock);
               continue;
             }
 
-          ret = mijia_fetch_family(token, generation, home_name,
-                                   sizeof(home_name), &device_count,
-                                   &online_count);
-          if (ret < 0)
+          if (full_resync)
             {
-              if (ret != -ECANCELED)
+              ret = mijia_fetch_family(token, generation, home_name,
+                                       sizeof(home_name), &device_count,
+                                       &online_count);
+              if (ret == -EACCES &&
+                  mijia_reunlock_persisted_session(token) == 0)
                 {
-                  mijia_mark_sync_failure(generation, ret);
+                  ret = mijia_fetch_family(token, generation, home_name,
+                                           sizeof(home_name), &device_count,
+                                           &online_count);
                 }
-              continue;
+              if (ret < 0)
+                {
+                  if (ret != -ECANCELED)
+                    {
+                      mijia_mark_sync_failure(generation, ret);
+                    }
+                  continue;
+                }
             }
 
           pthread_mutex_lock(&g_mijia.lock);
           server_revision = g_mijia.family_snapshot.server_revision;
+          device_count = g_mijia.family_snapshot.device_count;
+          online_count = g_mijia.family_snapshot.online_count;
+          mijia_copy_string(home_name, sizeof(home_name),
+                            g_mijia.snapshot.home_name);
           pthread_mutex_unlock(&g_mijia.lock);
-          mijia_refresh_summary(generation, home_name, device_count,
-                                online_count);
+          if (changed || full_resync)
+            {
+              mijia_refresh_summary(generation, home_name, device_count,
+                                    online_count);
+            }
         }
 
       memset(token, 0, sizeof(token));
@@ -1786,14 +2085,13 @@ int home_panel_mijia_request_login(void)
   g_mijia.qr_size = 0;
   g_mijia.snapshot.qr_size = 0;
   g_mijia.snapshot.qr_revision = ++g_mijia.next_qr_revision;
-  free(g_mijia.family_json);
   memset(g_mijia.token, 0, sizeof(g_mijia.token));
   g_mijia.command_busy = false;
   memset(&g_mijia.command_snapshot, 0,
          sizeof(g_mijia.command_snapshot));
   g_mijia.command_snapshot.revision = ++g_mijia.next_command_revision;
-  g_mijia.family_json = NULL;
-  g_mijia.family_json_size = 0;
+  g_mijia.family_model_valid = false;
+  memset(&g_mijia.family_model, 0, sizeof(g_mijia.family_model));
   memset(&g_mijia.family_snapshot, 0,
          sizeof(g_mijia.family_snapshot));
   pthread_cond_signal(&g_mijia.condition);
@@ -1804,6 +2102,8 @@ int home_panel_mijia_request_login(void)
 int home_panel_mijia_request_bool_property(const char *did,
                                             const char *device_name,
                                             const char *property_name,
+                                            uint16_t siid,
+                                            uint16_t piid,
                                             bool value)
 {
   if (property_name == NULL || property_name[0] == '\0')
@@ -1812,14 +2112,14 @@ int home_panel_mijia_request_bool_property(const char *did,
     }
 
   return mijia_start_command(MIJIA_COMMAND_PROPERTY, did, device_name,
-                             property_name, value);
+                             property_name, siid, piid, value);
 }
 
 int home_panel_mijia_request_scene(const char *scene_id,
                                    const char *scene_name)
 {
   return mijia_start_command(MIJIA_COMMAND_SCENE, scene_id, scene_name,
-                             NULL, false);
+                             NULL, 0, 0, false);
 }
 
 void home_panel_mijia_get_snapshot(
@@ -1843,6 +2143,32 @@ void home_panel_mijia_get_family_snapshot(
   pthread_mutex_unlock(&g_mijia.lock);
 }
 
+int home_panel_mijia_get_family_model(
+  uint32_t revision, struct home_panel_family_model_s *model)
+{
+  int ret;
+
+  if (model == NULL || revision == 0)
+    {
+      return -EINVAL;
+    }
+
+  pthread_mutex_lock(&g_mijia.lock);
+  if (!g_mijia.family_model_valid ||
+      revision != g_mijia.family_snapshot.revision ||
+      revision != g_mijia.family_model.revision)
+    {
+      ret = -ESTALE;
+    }
+  else
+    {
+      memcpy(model, &g_mijia.family_model, sizeof(*model));
+      ret = 0;
+    }
+  pthread_mutex_unlock(&g_mijia.lock);
+  return ret;
+}
+
 void home_panel_mijia_get_command_snapshot(
   struct home_panel_mijia_command_snapshot_s *snapshot)
 {
@@ -1854,35 +2180,6 @@ void home_panel_mijia_get_command_snapshot(
   pthread_mutex_lock(&g_mijia.lock);
   memcpy(snapshot, &g_mijia.command_snapshot, sizeof(*snapshot));
   pthread_mutex_unlock(&g_mijia.lock);
-}
-
-int home_panel_mijia_copy_family_json(uint32_t revision, void *buffer,
-                                      size_t capacity, size_t *size)
-{
-  int ret = 0;
-
-  if (buffer == NULL || size == NULL)
-    {
-      return -EINVAL;
-    }
-
-  pthread_mutex_lock(&g_mijia.lock);
-  if (revision != g_mijia.family_snapshot.revision ||
-      g_mijia.family_json == NULL)
-    {
-      ret = -EAGAIN;
-    }
-  else if (capacity <= g_mijia.family_json_size)
-    {
-      ret = -ENOSPC;
-    }
-  else
-    {
-      memcpy(buffer, g_mijia.family_json, g_mijia.family_json_size + 1);
-      *size = g_mijia.family_json_size;
-    }
-  pthread_mutex_unlock(&g_mijia.lock);
-  return ret;
 }
 
 int home_panel_mijia_copy_qr(uint32_t revision, void *buffer,

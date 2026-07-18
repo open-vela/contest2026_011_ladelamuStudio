@@ -1,6 +1,6 @@
 {
 	"partitions": {
-		"mtd" : "spi0.0:512k(spl),128k(env),128k(env_r),256k(userid),3m(os),4m(rodata),7m(data)",
+		"mtd" : "spi0.0:512k(spl),128k(env),128k(env_r),256k(userid),3m(os),8m(font),4m(data)",
 		"type": ["mtd"],
 	}
 }

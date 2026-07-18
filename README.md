@@ -1,6 +1,6 @@
 # OpenVela D13x 衡山派家庭中控屏
 
-当前发布版本：**1.7.7.5**。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前发布版本：**1.10.11.7**。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 一、作品简介
 
@@ -19,8 +19,11 @@
 
 - 从 PBP/tinySPL 到 NuttX、NSH 和图形应用的完整 D13x 启动链路。
 - 显示、触摸、系统定时器和以太网均经过开发板实机联合验证。
-- 适配 16 MiB SPI NOR，系统、只读资源和持久化数据分区总计 15 MiB。
-- 家庭屏使用 MiSans 裁剪字形，在有限存储空间内提供完整中文界面。
+- 适配 16 MiB SPI NOR，分区容量完整覆盖系统、字体和持久化数据。
+- 完整 MiSans 字符集预编译为 1 bpp LVGL BinFont 并存放在独立 Flash
+  分区，动态米家设备名和房间名不再受静态字形子集限制。
+- 米家状态采用带连续版本的 MIoT 增量补丁；常规属性变化不再重复传输和解析
+  完整家庭快照，版本断档或家庭结构变化时自动回退全量同步。
 
 ## 二、选题方向
 
@@ -33,7 +36,8 @@
 ## 三、目录结构
 
 ```text
-app/home_panel/          1024x600 家庭中控 LVGL 应用、网络检测与裁剪字库
+app/home_panel/          1024x600 家庭中控 LVGL 应用、网络检测与字体流式加载
+assets/fonts/            MiSans 源 TTF、完整字符集 BinFont 及资源说明
 board/d13x-hengshan-pi/  板级初始化、NSH 配置、链接脚本和镜像打包输入
 chip/d13x/               D13x 启动、中断、串口、I2C、显示、定时器和 GMAC 驱动
 nuttx-overlay/           需要覆盖到上游 NuttX 的架构、驱动和调度文件
@@ -124,8 +128,8 @@ nsh> ping 192.168.1.1
 | env + env_r | 256 KiB |
 | userid | 256 KiB |
 | os | 3 MiB |
-| rodata | 4 MiB |
-| data | 7 MiB |
+| font | 8 MiB（完整字符集的预编译 MiSans BinFont） |
+| data | 4 MiB |
 
 米家登录凭据使用冗余记录保存在 `userid` 分区末尾。该分区不包含在升级镜像的
 `target` 列表内，因此正常重新烧录系统、资源和数据分区不会清除登录状态。
@@ -157,7 +161,7 @@ GitHub Actions 和开发板实机输出作为最终验收依据。完整对话�
 | [Apache NuttX](https://github.com/apache/nuttx) | RTOS 内核、NSH、VFS、网络、framebuffer、I2C 和触摸子系统 | OpenVela 对应分支 | Apache-2.0；固件运行时依赖 |
 | [LVGL](https://github.com/lvgl/lvgl) | 家庭中控屏图形、布局与输入事件 | 9.2.1 | MIT；由 `scripts/integrate.sh` 固定版本集成 |
 | [cJSON](https://github.com/DaveGamble/cJSON) | 解析米家登录、家庭与设备 API 响应 | 1.7.12 | MIT；通过 OpenVela `NETUTILS_CJSON` 集成 |
-| [lv_font_conv](https://github.com/lvgl/lv_font_conv) | 将 MiSans 裁剪为 LVGL C 字库 | 仅生成阶段 | MIT；不作为固件运行时依赖 |
+| [lv_font_conv](https://github.com/lvgl/lv_font_conv) | 生成字体分区不可用时的最小 LVGL 回退字库 | 仅生成阶段 | MIT；不作为固件运行时依赖 |
 | [mijia-api](https://github.com/Do1e/mijia-api) | 米家 App 扫码登录、家庭、设备、属性和场景的服务端接口参考 | GPL-3.0-or-later | 仅运行在服务器侧，不复制或链接进 D13x 固件 |
 | [Xiaomi Home Integration](https://github.com/XiaoMi/ha_xiaomi_home) | 核对小米官方 HTTP 控制、MQTT 状态订阅与 MIoT-Spec 消息架构 | 官方主分支 | Apache-2.0；仅作协议与架构参考，不复制进固件 |
 | [ArtInChip Luban-Lite](https://gitee.com/artinchip/luban-lite) | D13x 启动、时钟、显示和外设寄存器参考 | 参考代码 | 不作为独立运行时库；使用时遵循其上游许可声明 |
@@ -170,7 +174,10 @@ D13x 固件和 Release 产物相互独立，避免 GPL 服务端实现与 Apache
 ### 6.2 字体资源
 
 [MiSans](https://hyperos.mi.com/font/zh/) 用于家庭屏中文显示。MiSans 不是本项目
-的开源代码；固件仅包含当前界面所需字符生成的 18px 位图字形，并按照
+的开源代码；构建资产保留完整源字体 `MiSans-Regular.ttf`，镜像的独立
+`font` 分区保存覆盖该字体全部字符的 `MiSans-Regular-18-full.bin`。板端通过
+LVGL BinFont 读取，不在运行时解析 TTF 或执行浮点光栅化。BinFont SHA-256 为
+`b1aa4b9c025ea5268cb0049342bfc2f13dd0189545c9dabc81dfd52dcebeab47`，并按照
 [MiSans 字体知识产权许可协议](https://hyperos.mi.com/font-download/MiSans%E5%AD%97%E4%BD%93%E7%9F%A5%E8%AF%86%E4%BA%A7%E6%9D%83%E8%AE%B8%E5%8F%AF%E5%8D%8F%E8%AE%AE.pdf)
 使用和注明。
 
@@ -191,7 +198,7 @@ D13x 固件和 Release 产物相互独立，避免 GPL 服务端实现与 Apache
 联合验证镜像 SHA-256：
 
 ```text
-11a8123c02436e8575b78ad7b65293e93bb27ac3ed9695403109fef820e9102b
+569f4948b428b21379f91db43beb9432406725abbb6be75a5ded77f4c3acf7cc
 ```
 
 ## 八、许可证

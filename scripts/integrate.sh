@@ -41,6 +41,12 @@ if ! grep -q '^#include <unistd.h>$' \
     < "$REPO_ROOT/patches/lvgl-9.2.1-nuttx-gettid.patch"
 fi
 
+if ! grep -q 'CONFIG_LV_MEM_SIZE_KILOBYTES' \
+  "$LVGL_DIR/lvgl/src/lv_conf_internal.h"; then
+  patch -d "$LVGL_DIR/lvgl" -p1 \
+    < "$REPO_ROOT/patches/lvgl-9.2.1-nuttx-memory-kconfig.patch"
+fi
+
 # Match the LVGL wrapper target convention so make does not unpack the
 # archive again and overwrite the NuttX compatibility patch.
 touch "$LVGL_DIR/lvgl"
@@ -50,6 +56,7 @@ install -d \
   "$VENDOR_DIR/boards/d13x-hengshan-pi" \
   "$VENDOR_DIR/boards/d13x/hengshan-pi/pack" \
   "$VENDOR_DIR/chips/d13x" \
+  "$VENDOR_DIR/pack/resources/font" \
   "$VENDOR_DIR/pack/prebuilt"
 
 cp -a "$REPO_ROOT/board/d13x-hengshan-pi/." \
@@ -63,5 +70,7 @@ cp -a "$REPO_ROOT/board/d13x-hengshan-pi/pack/." \
 cp -a "$REPO_ROOT/chip/d13x/." "$VENDOR_DIR/chips/d13x/"
 cp -a "$REPO_ROOT/nuttx-overlay/." "$NUTTX_DIR/"
 cp -a "$REPO_ROOT/vendor-overlay/." "$VENDOR_DIR/"
+cp -f "$REPO_ROOT/assets/fonts/MiSans-Regular-18-full.bin" \
+  "$VENDOR_DIR/pack/resources/font/MiSans-Regular-18-full.bin"
 
 echo "D13x contest sources integrated into $WORKSPACE"

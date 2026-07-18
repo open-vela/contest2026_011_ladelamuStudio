@@ -33,7 +33,7 @@
 #define GT911_ADDR_PRIMARY         0x5d
 #define GT911_ADDR_FALLBACK        0x14
 #define GT911_I2C_FREQUENCY        400000
-#define GT911_POLL_INTERVAL_MS      10
+#define GT911_POLL_INTERVAL_MS       5
 
 #define GT911_GPIO_GROUP           0
 #define GT911_I2C_SCL_PIN          8

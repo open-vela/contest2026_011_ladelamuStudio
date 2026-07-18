@@ -21,17 +21,27 @@ struct home_panel_device_s
   char type[32];
   bool online;
   bool has_power;
+  uint16_t power_siid;
+  uint16_t power_piid;
   bool power_writable;
   bool power;
   bool has_brightness;
+  uint16_t brightness_siid;
+  uint16_t brightness_piid;
   int brightness;
   int brightness_min;
   int brightness_max;
   bool has_temperature;
+  uint16_t temperature_siid;
+  uint16_t temperature_piid;
   int temperature;
   bool has_humidity;
+  uint16_t humidity_siid;
+  uint16_t humidity_piid;
   int humidity;
   bool has_battery;
+  uint16_t battery_siid;
+  uint16_t battery_piid;
   int battery;
 };
 
@@ -67,5 +77,13 @@ struct home_panel_family_model_s
 
 int home_panel_mijia_model_parse(const char *json, uint32_t revision,
                                  struct home_panel_family_model_s *model);
+int home_panel_mijia_model_apply_online(
+  struct home_panel_family_model_s *model, const char *did, bool online);
+int home_panel_mijia_model_apply_property(
+  struct home_panel_family_model_s *model, const char *did,
+  uint16_t siid, uint16_t piid, bool is_boolean, bool boolean_value,
+  bool is_number, int number_value);
+void home_panel_mijia_model_refresh_rooms(
+  struct home_panel_family_model_s *model);
 
 #endif

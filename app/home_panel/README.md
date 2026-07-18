@@ -28,13 +28,24 @@ nsh> home_panel
 是云端回读，并未宣称已经接入官方 OAuth MQTT。后续接入官方 MQTT 时，板端事件
 模型无需变化。
 
-应用后台每秒读取 `eth0` 的 carrier 状态，并每 15 秒依次用 ICMP 检测
+面板首次登录或恢复会话时通过 `/api/sync` 获取带 `sync_revision` 的完整快照；
+之后只长轮询 `/api/sync/changes?after=<revision>`。服务端缓存上一份已交付状态，
+按 `did + siid + piid` 比较属性，并在 64 个连续版本内合并重复变化，只发送最终
+的 `properties_changed` 和 `device_online_changed`。板端直接将补丁应用到紧凑
+内存模型，不再因单个属性变化下载和解析完整家庭 JSON。设备、房间、场景或能力
+结构变化、版本断档及历史溢出时，服务端返回 `resync_required`，板端才回退一次
+全量同步。该扩展只修改面板 HTTP 同步层，不伪造小米官方 MQTT 连接，也不改变
+设备控制经小米云 OT 通道路由的事实。
+
+应用后台每秒读取 `eth0` 的 carrier 状态，并每 60 秒依次用 ICMP 检测
 `mi.com` 与 `xiaomi.cn`。界面区分“有线网络未连接”“无互联网连接”和
 “已连接互联网”三种状态；设置页的“重新检测网络”按钮可立即触发一次检测。
 DNS 服务器由 DHCP 配置，网络检测运行在独立线程，不阻塞 LVGL 与触摸事件。
 
-SPI NOR 使用 15 MiB 的显式分区布局：系统 3 MiB、只读资源 4 MiB、数据
-7 MiB，并预留独立的 256 KiB `userid` 分区。登录凭据双槽位于 `userid`
+SPI NOR 使用完整 16 MiB 的显式分区布局：系统 3 MiB、完整 MiSans 字符集
+BinFont 8 MiB、数据 4 MiB，并预留独立的 256 KiB `userid` 分区。字体不进入
+NuttX 镜像，而是在构建时从完整 TTF 预编译为 1 bpp LVGL BinFont，写入
+SPI NOR 并由板端按需读取字形，避免运行时 TTF 解析与浮点栅格化。登录凭据双槽位于 `userid`
 末尾 8 KiB；该分区不写入升级镜像，因此更新系统、资源或数据分区不会清除登录。
 
 ## 开源项目与第三方组件
@@ -62,9 +73,10 @@ SPI NOR 使用 15 MiB 的显式分区布局：系统 3 MiB、只读资源 4 MiB�
 
 ### 字体与生成工具
 
-- [MiSans](https://hyperos.mi.com/font/zh/)：界面中文字体。固件只包含当前界面
-  所需字符生成的 18px 位图字形，并依据
+- [MiSans](https://hyperos.mi.com/font/zh/)：界面中文字体。构建资产保留完整
+  `MiSans-Regular.ttf`，镜像使用覆盖字体全部字符的 1 bpp LVGL 压缩二进制
+  字体，支持服务端返回的动态中文设备名和房间名，并依据
   [MiSans 字体知识产权许可协议](https://hyperos.mi.com/font-download/MiSans%E5%AD%97%E4%BD%93%E7%9F%A5%E8%AF%86%E4%BA%A7%E6%9D%83%E8%AE%B8%E5%8F%AF%E5%8D%8F%E8%AE%AE.pdf)
   使用和注明；MiSans 本身不是本项目的开源代码。
-- [lv_font_conv](https://github.com/lvgl/lv_font_conv)：将本地 MiSans 字体裁剪并
-  转换为 LVGL C 字库的构建工具，MIT 许可证；正常固件编译不依赖 Node.js。
+- [lv_font_conv](https://github.com/lvgl/lv_font_conv)：将完整 MiSans 预编译为
+  LVGL 二进制字体，避免开发板运行时解析 TTF 和执行浮点光栅化，MIT 许可证。

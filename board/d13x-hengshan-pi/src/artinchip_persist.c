@@ -7,6 +7,7 @@
 #include <arch/board/board.h>
 #include <nuttx/arch.h>
 #include <nuttx/clock.h>
+#include <nuttx/mutex.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -91,6 +92,7 @@ struct d13x_persist_header_s
 };
 
 static bool g_qspi_ready;
+static mutex_t g_qspi_lock = NXMUTEX_INITIALIZER;
 
 static inline uint32_t d13x_getreg32(uintptr_t address)
 {
@@ -388,6 +390,27 @@ static int d13x_spinor_read(uint32_t address, void *buffer, size_t length)
   return d13x_spinor_command(command, sizeof(command), buffer, length);
 }
 
+int board_flash_read(uint32_t address, void *buffer, size_t length)
+{
+  int ret;
+
+  if (buffer == NULL || length == 0 || address >= 0x01000000u ||
+      length > 0x01000000u - address)
+    {
+      return -EINVAL;
+    }
+
+  ret = nxmutex_lock(&g_qspi_lock);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  ret = d13x_spinor_read(address, buffer, length);
+  nxmutex_unlock(&g_qspi_lock);
+  return ret;
+}
+
 static int d13x_spinor_erase(uint32_t address)
 {
   uint8_t command[4] =
@@ -521,6 +544,7 @@ static int d13x_read_pair(uint32_t slot0, uint32_t slot1, void *buffer,
 
 int board_persist_read(void *buffer, size_t capacity, size_t *length)
 {
+  bool migrate = false;
   int ret;
 
   if (buffer == NULL || length == NULL)
@@ -528,8 +552,14 @@ int board_persist_read(void *buffer, size_t capacity, size_t *length)
       return -EINVAL;
     }
 
-  ret = d13x_read_pair(D13X_PERSIST_SLOT0, D13X_PERSIST_SLOT1,
-                       buffer, capacity, length);
+  ret = nxmutex_lock(&g_qspi_lock);
+  if (ret < 0)
+    {
+      return ret;
+    }
+
+  ret = d13x_read_pair(D13X_PERSIST_SLOT0, D13X_PERSIST_SLOT1, buffer,
+                       capacity, length);
   if (ret < 0)
     {
       ret = d13x_read_pair(D13X_PERSIST_LEGACY_SLOT0,
@@ -537,10 +567,19 @@ int board_persist_read(void *buffer, size_t capacity, size_t *length)
                            buffer, capacity, length);
       if (ret == 0)
         {
-          /* Best-effort one-time migration into userid. */
-
-          board_persist_write(buffer, *length);
+          migrate = true;
         }
+    }
+
+  nxmutex_unlock(&g_qspi_lock);
+
+  /* Best-effort one-time migration into userid.  Do this after releasing the
+   * QSPI lock because board_persist_write() takes the same lock.
+   */
+
+  if (migrate)
+    {
+      board_persist_write(buffer, *length);
     }
 
   return ret;
@@ -559,6 +598,12 @@ int board_persist_write(const void *buffer, size_t length)
   if (buffer == NULL || length == 0 || length > sizeof(payload))
     {
       return -EINVAL;
+    }
+
+  ret = nxmutex_lock(&g_qspi_lock);
+  if (ret < 0)
+    {
+      return ret;
     }
 
   results[0] = d13x_read_slot(D13X_PERSIST_SLOT0, &headers[0], payload);
@@ -614,5 +659,6 @@ int board_persist_write(const void *buffer, size_t length)
 
   memset(payload, 0, sizeof(payload));
   memset(verify, 0, sizeof(verify));
+  nxmutex_unlock(&g_qspi_lock);
   return ret;
 }

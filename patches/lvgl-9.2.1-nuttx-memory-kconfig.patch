@@ -1,0 +1,20 @@
+diff --git a/src/lv_conf_internal.h b/src/lv_conf_internal.h
+index b6229ba90..6796a01bb 100644
+--- a/src/lv_conf_internal.h
++++ b/src/lv_conf_internal.h
+@@ -171,7 +171,9 @@
+ #if LV_USE_STDLIB_MALLOC == LV_STDLIB_BUILTIN
+     /*Size of the memory available for `lv_malloc()` in bytes (>= 2kB)*/
+     #ifndef LV_MEM_SIZE
+-        #ifdef CONFIG_LV_MEM_SIZE
++        #ifdef CONFIG_LV_MEM_SIZE_KILOBYTES
++            #define LV_MEM_SIZE (CONFIG_LV_MEM_SIZE_KILOBYTES * 1024U)
++        #elif defined(CONFIG_LV_MEM_SIZE)
+             #define LV_MEM_SIZE CONFIG_LV_MEM_SIZE
+         #else
+             #define LV_MEM_SIZE (64 * 1024U)          /*[bytes]*/
+@@ -184 +186,3 @@
+-        #ifdef CONFIG_LV_MEM_POOL_EXPAND_SIZE
++        #ifdef CONFIG_LV_MEM_POOL_EXPAND_SIZE_KILOBYTES
++            #define LV_MEM_POOL_EXPAND_SIZE (CONFIG_LV_MEM_POOL_EXPAND_SIZE_KILOBYTES * 1024U)
++        #elif defined(CONFIG_LV_MEM_POOL_EXPAND_SIZE)

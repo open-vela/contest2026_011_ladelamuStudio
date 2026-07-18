@@ -28,14 +28,20 @@
 
 #include "home_panel_mijia_client.h"
 #include "home_panel_mijia_model.h"
+#include "home_panel_font.h"
 
-LV_FONT_DECLARE(home_panel_misans_18);
 LV_FONT_DECLARE(home_panel_digits_28);
 
 #define PANEL_WIDTH       1024
 #define PANEL_HEIGHT      600
 #define TOPBAR_HEIGHT     72
 #define NAV_WIDTH         154
+#define ROOM_NAV_WIDTH    190
+#define ROOM_CARD_WIDTH   292
+#define ROOM_CARD_HEIGHT  216
+#define ROOM_CARD_GAP     14
+#define HOME_PAGE_COUNT   4
+#define HOME_CARD_COUNT   3
 
 #define COLOR_BG          0x0f1114
 #define COLOR_SURFACE     0x191d22
@@ -47,7 +53,7 @@ LV_FONT_DECLARE(home_panel_digits_28);
 #define COLOR_GREEN       0x47c486
 
 #define NETWORK_INTERFACE       "eth0"
-#define NETWORK_PROBE_INTERVAL  15
+#define NETWORK_PROBE_INTERVAL  60
 #define NETWORK_THREAD_STACK    8192
 #define NETWORK_PING_POLL_US    20000
 #define NETWORK_PING_POLLS      75
@@ -70,13 +76,14 @@ enum network_state_e
 static lv_obj_t *g_status_label;
 static lv_obj_t *g_content;
 static lv_obj_t *g_page_host;
-static lv_obj_t *g_pages[4];
-static lv_obj_t *g_page_status_labels[4];
-static lv_obj_t *g_page_settings_network_labels[4];
-static lv_obj_t *g_page_settings_probe_labels[4];
-static lv_obj_t *g_page_settings_account_labels[4];
-static lv_obj_t *g_page_home_summary_labels[4];
-static lv_obj_t *g_nav_buttons[4];
+static lv_obj_t *g_pages[HOME_PAGE_COUNT];
+static lv_obj_t *g_page_status_labels[HOME_PAGE_COUNT];
+static lv_obj_t *g_page_settings_network_labels[HOME_PAGE_COUNT];
+static lv_obj_t *g_page_settings_probe_labels[HOME_PAGE_COUNT];
+static lv_obj_t *g_page_settings_account_labels[HOME_PAGE_COUNT];
+static lv_obj_t *g_page_home_summary_labels[HOME_PAGE_COUNT];
+static lv_obj_t *g_nav_buttons[HOME_PAGE_COUNT];
+static uint32_t g_page_model_revisions[HOME_PAGE_COUNT];
 static lv_obj_t *g_network_label;
 static lv_obj_t *g_settings_network_label;
 static lv_obj_t *g_settings_probe_label;
@@ -94,12 +101,20 @@ static uint8_t *g_login_qr_data;
 static uint32_t g_login_qr_revision;
 static struct home_panel_family_model_s g_family_model;
 static bool g_family_model_valid;
+static bool g_model_refresh_pending;
+static uint32_t g_family_ui_revision;
 static unsigned int g_current_page;
+static unsigned int g_selected_room;
+static lv_obj_t *g_room_buttons[HOME_PANEL_MAX_ROOMS];
+static lv_obj_t *g_room_title_label;
+static lv_obj_t *g_room_summary_label;
+static lv_obj_t *g_room_device_host;
 
 struct home_panel_device_binding_s
 {
   const struct home_panel_device_s *device;
   lv_obj_t *button;
+  lv_obj_t *value_label;
   lv_obj_t *state_label;
 };
 
@@ -108,8 +123,12 @@ struct home_panel_scene_binding_s
   const struct home_panel_scene_s *scene;
 };
 
-static struct home_panel_device_binding_s g_device_bindings[3];
-static struct home_panel_scene_binding_s g_scene_bindings[3];
+static struct home_panel_device_binding_s
+  g_device_bindings[HOME_PAGE_COUNT][HOME_PANEL_MAX_DEVICES +
+                                     HOME_CARD_COUNT];
+static unsigned int g_device_binding_counts[HOME_PAGE_COUNT];
+static struct home_panel_scene_binding_s
+  g_scene_bindings[HOME_PAGE_COUNT][HOME_PANEL_MAX_SCENES];
 static volatile enum network_state_e g_network_state =
   NETWORK_INITIALIZING;
 static volatile bool g_network_refresh_requested = true;
@@ -122,7 +141,7 @@ static uint32_t g_last_time_update;
 static uint32_t g_next_ntp_attempt;
 static void nav_clicked(lv_event_t *event);
 static void show_page(unsigned int page);
-static void clear_page_cache(void);
+static void delete_page(unsigned int page);
 static void apply_mijia_snapshot(
   const struct home_panel_mijia_snapshot_s *snapshot);
 
@@ -414,7 +433,6 @@ static bool network_resolve_host(const char *hostname,
   uint16_t query_id = ++g_network_dns_id;
   size_t query_length = sizeof(struct dns_header_s);
   unsigned int poll_count;
-  char server_text[INET_ADDRSTRLEN];
   int sockfd;
   int ret;
 
@@ -459,11 +477,6 @@ static bool network_resolve_host(const char *hostname,
   network_dns_write_u16(&query[query_length], DNS_CLASS_IN);
   query_length += 2;
 
-  inet_ntop(AF_INET, &dns_server.sin_addr, server_text,
-            sizeof(server_text));
-  syslog(LOG_INFO, "[HOME][NET] host=%s dns=%s\n",
-         hostname, server_text);
-
   sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (sockfd < 0)
     {
@@ -490,8 +503,6 @@ static bool network_resolve_host(const char *hostname,
       close(sockfd);
       return false;
     }
-
-  syslog(LOG_INFO, "[HOME][NET] host=%s dns-sent=%d\n", hostname, ret);
 
   for (poll_count = 0; poll_count < NETWORK_PING_POLLS; poll_count++)
     {
@@ -566,13 +577,6 @@ static bool network_resolve_host(const char *hostname,
           break;
         }
 
-      if (poll_count == NETWORK_PING_POLLS / 3 ||
-          poll_count == (NETWORK_PING_POLLS * 2) / 3)
-        {
-          syslog(LOG_INFO, "[HOME][NET] host=%s dns-wait=%u/%u\n",
-                 hostname, poll_count, NETWORK_PING_POLLS);
-        }
-
       usleep(NETWORK_PING_POLL_US);
     }
 
@@ -588,7 +592,6 @@ static int network_ping_host(const char *hostname)
   uint8_t receive_buffer[64];
   uint16_t ping_id;
   unsigned int poll_count;
-  char address_text[INET_ADDRSTRLEN];
   int sockfd;
   int ret;
 
@@ -598,11 +601,6 @@ static int network_ping_host(const char *hostname)
     {
       return 0;
     }
-
-  inet_ntop(AF_INET, &destination.sin_addr, address_text,
-            sizeof(address_text));
-  syslog(LOG_INFO, "[HOME][NET] host=%s address=%s\n",
-         hostname, address_text);
 
   sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
   if (sockfd < 0)
@@ -748,15 +746,10 @@ static void *network_worker(void *arg)
               network_set_state(NETWORK_CHECKING);
             }
           inet_ntop(AF_INET, &address, address_text, sizeof(address_text));
-          syslog(LOG_INFO, "[HOME][NET] ipv4=%s probe=mi.com\n",
-                 address_text);
           replies = network_ping_host("mi.com");
-          syslog(LOG_INFO, "[HOME][NET] host=mi.com replies=%d\n", replies);
           if (replies <= 0 && network_has_carrier())
             {
               replies = network_ping_host("xiaomi.cn");
-              syslog(LOG_INFO,
-                     "[HOME][NET] host=xiaomi.cn replies=%d\n", replies);
             }
 
           if (!network_has_carrier())
@@ -767,6 +760,9 @@ static void *network_worker(void *arg)
             {
               network_set_state(replies > 0 ? NETWORK_ONLINE :
                                               NETWORK_NO_INTERNET);
+              syslog(LOG_INFO,
+                     "[HOME][NET] health ipv4=%s result=%s\n",
+                     address_text, replies > 0 ? "online" : "unreachable");
             }
 
           was_connected = true;
@@ -863,7 +859,7 @@ static void apply_network_state(enum network_state_e state)
 
 static void set_chinese_font(lv_obj_t *obj)
 {
-  lv_obj_set_style_text_font(obj, &home_panel_misans_18, 0);
+  lv_obj_set_style_text_font(obj, home_panel_font_get(), 0);
 }
 
 static lv_obj_t *make_label(lv_obj_t *parent, const char *text,
@@ -925,7 +921,7 @@ static void device_toggled(lv_event_t *event)
   int ret;
 
   if (binding == NULL || binding->device == NULL ||
-      !binding->device->power_writable)
+      !binding->device->power_writable || !binding->device->online)
     {
       return;
     }
@@ -933,7 +929,10 @@ static void device_toggled(lv_event_t *event)
   requested = lv_obj_has_state(button, LV_STATE_CHECKED);
   ret = home_panel_mijia_request_bool_property(binding->device->did,
                                                 binding->device->name,
-                                                "on", requested);
+                                                "on",
+                                                binding->device->power_siid,
+                                                binding->device->power_piid,
+                                                requested);
 
   if (binding->device->power)
     {
@@ -1149,8 +1148,8 @@ static void show_login(lv_event_t *event)
   lv_obj_clear_flag(dialog, LV_OBJ_FLAG_SCROLLABLE);
 
   label = make_label(dialog, "米家账号登录", 282, 8,
-                     lv_color_hex(COLOR_TEXT), &home_panel_misans_18);
-  lv_obj_set_style_text_font(label, &home_panel_misans_18, 0);
+                     lv_color_hex(COLOR_TEXT), home_panel_font_get());
+  lv_obj_set_style_text_font(label, home_panel_font_get(), 0);
 
   g_login_qr = lv_image_create(dialog);
   lv_obj_set_size(g_login_qr, 256, 256);
@@ -1162,7 +1161,7 @@ static void show_login(lv_event_t *event)
 
   g_login_message = make_label(dialog, "正在准备米家登录",
                                282, 78, lv_color_hex(COLOR_MUTED),
-                               &home_panel_misans_18);
+                               home_panel_font_get());
   lv_obj_set_width(g_login_message, 340);
   lv_label_set_long_mode(g_login_message, LV_LABEL_LONG_WRAP);
   lv_obj_set_style_text_line_space(g_login_message, 12, 0);
@@ -1171,7 +1170,7 @@ static void show_login(lv_event_t *event)
                      "请使用米家 App 扫码。账号认证数据只保存在\n"
                      "本地服务端的加密保险箱中。",
                      282, 164, lv_color_hex(COLOR_MUTED),
-                     &home_panel_misans_18);
+                     home_panel_font_get());
   lv_obj_set_style_text_line_space(label, 10, 0);
 
   close = lv_button_create(dialog);
@@ -1326,7 +1325,7 @@ static lv_obj_t *make_nav_button(lv_obj_t *parent, const char *symbol,
                     &lv_font_montserrat_16);
   label = make_label(button, text, 42, 13,
                      lv_color_hex(COLOR_MUTED),
-                     &home_panel_misans_18);
+                     home_panel_font_get());
   (void)icon;
   (void)label;
   return button;
@@ -1357,54 +1356,83 @@ static lv_obj_t *make_scene_button(lv_obj_t *parent, const char *symbol,
                             LV_STATE_PRESSED);
   lv_obj_set_style_border_width(button, 1, 0);
   lv_obj_set_style_border_color(button, lv_color_hex(0x2c323a), 0);
-  g_scene_bindings[binding_index].scene = scene;
+  g_scene_bindings[g_current_page][binding_index].scene = scene;
   lv_obj_add_event_cb(button, scene_clicked, LV_EVENT_CLICKED,
-                      &g_scene_bindings[binding_index]);
+                      &g_scene_bindings[g_current_page][binding_index]);
 
   icon = make_label(button, symbol, 14, 22, accent, &lv_font_montserrat_16);
   label = make_label(button, scene->name, 54, 20,
                      lv_color_hex(COLOR_TEXT),
-                     &home_panel_misans_18);
+                     home_panel_font_get());
   (void)icon;
   return label;
 }
 
-static void make_device_card(lv_obj_t *parent, int x, const char *symbol,
-                             const struct home_panel_device_s *device,
-                             lv_color_t accent,
-                             unsigned int binding_index)
+static void format_device_value(const struct home_panel_device_s *device,
+                                char *value, size_t capacity)
 {
-  lv_obj_t *card = lv_obj_create(parent);
-  lv_obj_t *toggle;
-  lv_obj_t *state;
-  lv_obj_t *label;
-  char value[32];
-  const char *state_text;
-  bool checked = device->has_power && device->power;
-
   if (device->has_brightness)
     {
       int span = device->brightness_max - device->brightness_min;
       int percent = span > 0 ?
         (device->brightness - device->brightness_min) * 100 / span : 0;
-      snprintf(value, sizeof(value), "%d%%", percent);
+
+      snprintf(value, capacity, "%d%%", percent);
     }
   else if (device->has_temperature)
     {
-      snprintf(value, sizeof(value), "%d°C", device->temperature);
+      snprintf(value, capacity, "%d°C", device->temperature);
     }
   else if (device->has_battery)
     {
-      snprintf(value, sizeof(value), "%d%%", device->battery);
+      snprintf(value, capacity, "%d%%", device->battery);
     }
   else
     {
-      snprintf(value, sizeof(value), "%s",
-               device->online ? "在线" : "离线");
+      snprintf(value, capacity, "%s", device->online ? "在线" : "离线");
+    }
+}
+
+static const char *device_state_text(
+  const struct home_panel_device_s *device)
+{
+  if (!device->online)
+    {
+      return "离线";
     }
 
-  lv_obj_set_pos(card, x, 238);
-  lv_obj_set_size(card, 240, 218);
+  if (device->has_power)
+    {
+      return device->power ? "已开启" : "已关闭";
+    }
+
+  return "状态已同步";
+}
+
+static void make_device_card(lv_obj_t *parent, int x, int y,
+                             int width, int height, const char *symbol,
+                             const struct home_panel_device_s *device,
+                             lv_color_t accent)
+{
+  lv_obj_t *card = lv_obj_create(parent);
+  lv_obj_t *toggle;
+  lv_obj_t *state;
+  lv_obj_t *label;
+  lv_obj_t *value_label;
+  struct home_panel_device_binding_s *binding;
+  unsigned int binding_index;
+  const lv_font_t *value_font;
+  char value[32];
+  const char *state_text;
+  bool checked = device->has_power && device->power;
+
+  format_device_value(device, value, sizeof(value));
+  value_font = device->has_brightness || device->has_temperature ||
+               device->has_battery ? &home_panel_digits_28 :
+                                     home_panel_font_get();
+
+  lv_obj_set_pos(card, x, y);
+  lv_obj_set_size(card, width, height);
   lv_obj_set_style_radius(card, 8, 0);
   lv_obj_set_style_border_width(card, 1, 0);
   lv_obj_set_style_border_color(card, lv_color_hex(0x2c323a), 0);
@@ -1415,23 +1443,30 @@ static void make_device_card(lv_obj_t *parent, int x, const char *symbol,
   make_label(card, symbol, 0, 0, accent, &lv_font_montserrat_16);
   make_label(card, device->room[0] != '\0' ? device->room : "未分房间",
              0, 58, lv_color_hex(COLOR_MUTED),
-             &home_panel_misans_18);
-  make_label(card, device->name, 0, 88, lv_color_hex(COLOR_TEXT),
-             &home_panel_misans_18);
-  label = make_label(card, value, 0, 122, accent, &home_panel_digits_28);
-  (void)label;
+             home_panel_font_get());
+  label = make_label(card, device->name, 0, 88,
+                     lv_color_hex(COLOR_TEXT), home_panel_font_get());
+  lv_obj_set_width(label, width - 36);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+  value_label = make_label(card, value, 0, 122, accent, value_font);
 
-  state_text = !device->online ? "离线" :
-               device->has_power ? (checked ? "已开启" : "已关闭") :
-                                   "状态已同步";
+  state_text = device_state_text(device);
   state = make_label(card, state_text, 0, 169,
                      lv_color_hex(checked ? COLOR_GREEN : COLOR_MUTED),
-                     &home_panel_misans_18);
+                     home_panel_font_get());
 
-  if (!device->power_writable || !device->online)
+  if (!device->power_writable)
     {
       return;
     }
+
+  binding_index = g_device_binding_counts[g_current_page];
+  if (binding_index >= HOME_PANEL_MAX_DEVICES + HOME_CARD_COUNT)
+    {
+      return;
+    }
+  binding = &g_device_bindings[g_current_page][binding_index];
+  g_device_binding_counts[g_current_page]++;
 
   toggle = lv_button_create(card);
   lv_obj_set_size(toggle, 52, 32);
@@ -1448,16 +1483,21 @@ static void make_device_card(lv_obj_t *parent, int x, const char *symbol,
     {
       lv_obj_add_state(toggle, LV_STATE_CHECKED);
     }
+  if (!device->online)
+    {
+      lv_obj_add_state(toggle, LV_STATE_DISABLED);
+    }
 
   label = lv_label_create(toggle);
   lv_label_set_text(label, LV_SYMBOL_POWER);
   lv_obj_set_style_text_font(label, &lv_font_montserrat_16, 0);
   lv_obj_center(label);
-  g_device_bindings[binding_index].device = device;
-  g_device_bindings[binding_index].button = toggle;
-  g_device_bindings[binding_index].state_label = state;
+  binding->device = device;
+  binding->button = toggle;
+  binding->value_label = value_label;
+  binding->state_label = state;
   lv_obj_add_event_cb(toggle, device_toggled, LV_EVENT_VALUE_CHANGED,
-                      &g_device_bindings[binding_index]);
+                      binding);
 }
 
 static lv_obj_t *make_action_button(lv_obj_t *parent, const char *text,
@@ -1486,9 +1526,9 @@ static lv_obj_t *make_info_row(lv_obj_t *parent, const char *name,
                                const char *value, int y, lv_color_t color)
 {
   make_label(parent, name, 32, y, lv_color_hex(COLOR_MUTED),
-             &home_panel_misans_18);
+             home_panel_font_get());
   return make_label(parent, value, 238, y, color,
-                    &home_panel_misans_18);
+                    home_panel_font_get());
 }
 
 static void network_refresh_clicked(lv_event_t *event)
@@ -1587,7 +1627,7 @@ static void create_home_page(void)
   char status[64];
 
   make_label(g_content, "晚上好，欢迎回家", 30, 22,
-             lv_color_hex(COLOR_TEXT), &home_panel_misans_18);
+             lv_color_hex(COLOR_TEXT), home_panel_font_get());
 
   for (index = 0; index < g_family_model.room_count; index++)
     {
@@ -1614,7 +1654,7 @@ static void create_home_page(void)
     }
   g_home_summary_label = make_label(g_content, subtitle, 30, 54,
                                     lv_color_hex(COLOR_MUTED),
-                                    &home_panel_misans_18);
+                                    home_panel_font_get());
 
   for (index = 0; index < g_family_model.scene_count && index < 3; index++)
     {
@@ -1629,12 +1669,12 @@ static void create_home_page(void)
     }
 
   make_label(g_content, "常用设备", 30, 198, lv_color_hex(COLOR_TEXT),
-             &home_panel_misans_18);
+             home_panel_font_get());
   snprintf(status, sizeof(status), "%u/%u 台在线",
            g_family_model.online_count, g_family_model.device_count);
   g_status_label = make_label(g_content, status, 666, 198,
                               lv_color_hex(COLOR_MUTED),
-                              &home_panel_misans_18);
+                              home_panel_font_get());
 
   selected_count = select_device_cards(selected);
   for (index = 0; index < selected_count; index++)
@@ -1646,49 +1686,229 @@ static void create_home_page(void)
       };
       const struct home_panel_device_s *device =
         &g_family_model.devices[selected[index]];
-      make_device_card(g_content, positions[index], device_symbol(device),
-                       device, lv_color_hex(colors[index]), index);
+      make_device_card(g_content, positions[index], 238, 240, 218,
+                       device_symbol(device), device,
+                       lv_color_hex(colors[index]));
     }
+}
+
+static bool device_in_room(const struct home_panel_device_s *device,
+                           const struct home_panel_room_s *room)
+{
+  return device->room[0] != '\0' && room->name[0] != '\0' &&
+         strcmp(device->room, room->name) == 0;
+}
+
+static void update_room_button_styles(void)
+{
+  unsigned int index;
+
+  for (index = 0; index < g_family_model.room_count; index++)
+    {
+      if (g_room_buttons[index] == NULL)
+        {
+          continue;
+        }
+
+      lv_obj_set_style_bg_color(
+        g_room_buttons[index],
+        lv_color_hex(index == g_selected_room ? COLOR_SURFACE_2 :
+                                                0x13161a), 0);
+      lv_obj_set_style_text_color(
+        g_room_buttons[index],
+        lv_color_hex(index == g_selected_room ? COLOR_TEXT : COLOR_MUTED),
+        0);
+    }
+}
+
+static void render_room_devices(unsigned int room_index)
+{
+  static const uint32_t colors[] =
+  {
+    COLOR_ORANGE, COLOR_BLUE, COLOR_GREEN
+  };
+  const struct home_panel_room_s *room;
+  unsigned int device_index;
+  unsigned int visible = 0;
+  char summary[96];
+
+  if (g_room_device_host == NULL || g_family_model.room_count == 0)
+    {
+      return;
+    }
+
+  if (room_index >= g_family_model.room_count)
+    {
+      room_index = 0;
+    }
+
+  g_selected_room = room_index;
+  room = &g_family_model.rooms[room_index];
+  lv_label_set_text(g_room_title_label, room->name);
+  if (room->has_temperature && room->has_humidity)
+    {
+      snprintf(summary, sizeof(summary), "%u 台设备 · %d°C · 湿度 %d%%",
+               room->device_count, room->temperature, room->humidity);
+    }
+  else
+    {
+      snprintf(summary, sizeof(summary), "%u 台设备",
+               room->device_count);
+    }
+  lv_label_set_text(g_room_summary_label, summary);
+
+  lv_obj_clean(g_room_device_host);
+  memset(g_device_bindings[1], 0, sizeof(g_device_bindings[1]));
+  g_device_binding_counts[1] = 0;
+  for (device_index = 0;
+       device_index < g_family_model.device_count;
+       device_index++)
+    {
+      const struct home_panel_device_s *device =
+        &g_family_model.devices[device_index];
+      unsigned int column;
+      unsigned int row;
+
+      if (!device_in_room(device, room))
+        {
+          continue;
+        }
+
+      column = visible % 2;
+      row = visible / 2;
+      make_device_card(g_room_device_host,
+                       (int)column * (ROOM_CARD_WIDTH + ROOM_CARD_GAP),
+                       (int)row * (ROOM_CARD_HEIGHT + ROOM_CARD_GAP),
+                       ROOM_CARD_WIDTH, ROOM_CARD_HEIGHT,
+                       device_symbol(device), device,
+                       lv_color_hex(colors[visible % 3]));
+      visible++;
+    }
+
+  if (visible == 0)
+    {
+      lv_obj_t *empty = make_label(g_room_device_host,
+                                   "该房间暂无设备", 0, 24,
+                                   lv_color_hex(COLOR_MUTED),
+                                   home_panel_font_get());
+      lv_obj_set_width(empty, 580);
+      lv_obj_set_style_text_align(empty, LV_TEXT_ALIGN_CENTER, 0);
+    }
+
+  lv_obj_scroll_to_y(g_room_device_host, 0, LV_ANIM_OFF);
+  update_room_button_styles();
+  syslog(LOG_INFO, "[HOME][UI] room=%s devices=%u\n",
+         room->name, visible);
+}
+
+static void room_clicked(lv_event_t *event)
+{
+  uintptr_t room = (uintptr_t)lv_event_get_user_data(event);
+
+  if (room == 0)
+    {
+      return;
+    }
+
+  render_room_devices((unsigned int)room - 1);
 }
 
 static void create_rooms_page(void)
 {
-  lv_obj_t *panel;
+  lv_obj_t *sidebar;
+  lv_obj_t *button;
+  lv_obj_t *label;
   unsigned int index;
-  char value[80];
+  char count[24];
 
-  make_label(g_content, "房间", 30, 22, lv_color_hex(COLOR_TEXT),
-             &home_panel_misans_18);
-  make_label(g_content, "按空间查看和控制设备", 30, 54,
-             lv_color_hex(COLOR_MUTED), &home_panel_misans_18);
+  memset(g_room_buttons, 0, sizeof(g_room_buttons));
+  g_room_title_label = NULL;
+  g_room_summary_label = NULL;
+  g_room_device_host = NULL;
 
-  panel = lv_obj_create(g_content);
-  lv_obj_set_pos(panel, 30, 104);
-  lv_obj_set_size(panel, 790, 330);
-  lv_obj_set_style_radius(panel, 8, 0);
-  lv_obj_set_style_bg_color(panel, lv_color_hex(COLOR_SURFACE), 0);
-  lv_obj_set_style_border_color(panel, lv_color_hex(0x2c323a), 0);
-  lv_obj_set_scroll_dir(panel, LV_DIR_VER);
+  sidebar = lv_obj_create(g_content);
+  lv_obj_remove_style_all(sidebar);
+  lv_obj_set_pos(sidebar, 0, 0);
+  lv_obj_set_size(sidebar, ROOM_NAV_WIDTH,
+                  PANEL_HEIGHT - TOPBAR_HEIGHT);
+  lv_obj_set_style_bg_color(sidebar, lv_color_hex(0x13161a), 0);
+  lv_obj_set_style_bg_opa(sidebar, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_left(sidebar, 10, 0);
+  lv_obj_set_style_pad_right(sidebar, 10, 0);
+  lv_obj_set_style_pad_top(sidebar, 12, 0);
+  lv_obj_set_style_pad_bottom(sidebar, 12, 0);
+  lv_obj_set_scroll_dir(sidebar, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(sidebar, LV_SCROLLBAR_MODE_ACTIVE);
+
+  make_label(sidebar, "房间", 10, 4, lv_color_hex(COLOR_TEXT),
+             home_panel_font_get());
   for (index = 0; index < g_family_model.room_count; index++)
     {
       const struct home_panel_room_s *room = &g_family_model.rooms[index];
-      if (room->has_temperature && room->has_humidity)
-        {
-          snprintf(value, sizeof(value), "%u 台 · %d°C · %d%%",
-                   room->device_count, room->temperature, room->humidity);
-        }
-      else
-        {
-          snprintf(value, sizeof(value), "%u 台设备",
-                   room->device_count);
-        }
-      make_info_row(panel, room->name, value, 18 + (int)index * 44,
-                    room->device_count > 0 ? lv_color_hex(COLOR_TEXT) :
-                                             lv_color_hex(COLOR_MUTED));
+
+      button = lv_button_create(sidebar);
+      g_room_buttons[index] = button;
+      lv_obj_set_pos(button, 0, 48 + (int)index * 58);
+      lv_obj_set_size(button, ROOM_NAV_WIDTH - 20, 50);
+      lv_obj_set_style_radius(button, 8, 0);
+      lv_obj_set_style_shadow_width(button, 0, 0);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0x13161a), 0);
+      lv_obj_set_style_bg_color(button, lv_color_hex(0x303740),
+                                LV_STATE_PRESSED);
+      lv_obj_add_event_cb(button, room_clicked, LV_EVENT_CLICKED,
+                          (void *)(uintptr_t)(index + 1));
+
+      label = make_label(button, room->name, 8, 4,
+                         lv_color_hex(COLOR_MUTED),
+                         home_panel_font_get());
+      lv_obj_set_width(label, 112);
+      lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
+      snprintf(count, sizeof(count), "%u", room->device_count);
+      label = make_label(button, count, 132, 4,
+                         lv_color_hex(COLOR_MUTED),
+                         home_panel_font_get());
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_RIGHT, 0);
     }
-  g_status_label = make_label(g_content, "房间数据来自米家家庭模型",
-                              30, 458, lv_color_hex(COLOR_MUTED),
-                              &home_panel_misans_18);
+
+  g_room_title_label = make_label(g_content, "房间", 216, 20,
+                                  lv_color_hex(COLOR_TEXT),
+                                  home_panel_font_get());
+  g_room_summary_label = make_label(g_content,
+                                    "按空间查看和控制设备", 216, 52,
+                                    lv_color_hex(COLOR_MUTED),
+                                    home_panel_font_get());
+
+  g_room_device_host = lv_obj_create(g_content);
+  lv_obj_set_pos(g_room_device_host, 210, 92);
+  lv_obj_set_size(g_room_device_host, 642, 418);
+  lv_obj_set_style_radius(g_room_device_host, 0, 0);
+  lv_obj_set_style_border_width(g_room_device_host, 0, 0);
+  lv_obj_set_style_bg_color(g_room_device_host, lv_color_hex(COLOR_BG), 0);
+  lv_obj_set_style_bg_opa(g_room_device_host, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_all(g_room_device_host, 10, 0);
+  lv_obj_set_scroll_dir(g_room_device_host, LV_DIR_VER);
+  lv_obj_set_scrollbar_mode(g_room_device_host, LV_SCROLLBAR_MODE_ACTIVE);
+  lv_obj_set_scroll_snap_y(g_room_device_host, LV_SCROLL_SNAP_NONE);
+
+  if (g_family_model.room_count > 0)
+    {
+      if (g_selected_room >= g_family_model.room_count)
+        {
+          g_selected_room = 0;
+        }
+      render_room_devices(g_selected_room);
+    }
+  else
+    {
+      lv_label_set_text(g_room_summary_label, "正在同步米家房间");
+      label = make_label(g_room_device_host, "暂无房间数据", 0, 24,
+                         lv_color_hex(COLOR_MUTED),
+                         home_panel_font_get());
+      lv_obj_set_width(label, 580);
+      lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    }
+
+  g_status_label = g_room_summary_label;
 }
 
 static void create_scenes_page(void)
@@ -1696,9 +1916,9 @@ static void create_scenes_page(void)
   unsigned int index;
 
   make_label(g_content, "场景", 30, 22, lv_color_hex(COLOR_TEXT),
-             &home_panel_misans_18);
+             home_panel_font_get());
   make_label(g_content, "一次控制多个家庭设备", 30, 54,
-             lv_color_hex(COLOR_MUTED), &home_panel_misans_18);
+             lv_color_hex(COLOR_MUTED), home_panel_font_get());
   for (index = 0; index < g_family_model.scene_count && index < 3; index++)
     {
       static const int positions[3] = {30, 226, 422};
@@ -1714,7 +1934,7 @@ static void create_scenes_page(void)
                               g_family_model.scene_count > 0 ?
                               "点击场景即可执行" : "暂无可执行场景",
                               30, 208, lv_color_hex(COLOR_MUTED),
-                              &home_panel_misans_18);
+                              home_panel_font_get());
 }
 
 static void create_settings_page(void)
@@ -1722,9 +1942,9 @@ static void create_settings_page(void)
   lv_obj_t *panel;
 
   make_label(g_content, "设置", 30, 22, lv_color_hex(COLOR_TEXT),
-             &home_panel_misans_18);
+             home_panel_font_get());
   make_label(g_content, "网络、账号与系统状态", 30, 54,
-             lv_color_hex(COLOR_MUTED), &home_panel_misans_18);
+             lv_color_hex(COLOR_MUTED), home_panel_font_get());
 
   panel = lv_obj_create(g_content);
   lv_obj_set_pos(panel, 30, 104);
@@ -1750,9 +1970,9 @@ static void create_settings_page(void)
                  "云端定向回读" : "等待米家同步"),
                 246, g_family_model.mqtt_connected ?
                      lv_color_hex(COLOR_GREEN) : lv_color_hex(COLOR_BLUE));
-  g_status_label = make_label(g_content, "系统每 15 秒自动检测网络",
+  g_status_label = make_label(g_content, "系统每分钟自动检测网络",
                               30, 458, lv_color_hex(COLOR_MUTED),
-                              &home_panel_misans_18);
+                              home_panel_font_get());
   panel = make_action_button(g_content, "重新检测网络", 628, 450, 192);
   lv_obj_remove_event_cb(panel, action_clicked);
   lv_obj_add_event_cb(panel, network_refresh_clicked, LV_EVENT_CLICKED, NULL);
@@ -1765,15 +1985,21 @@ static void show_page(unsigned int page)
   bool creating;
   unsigned int i;
 
-  if (page > 3)
+  if (page >= HOME_PAGE_COUNT)
     {
       page = 0;
+    }
+
+  if (g_pages[page] != NULL &&
+      g_page_model_revisions[page] != g_family_ui_revision)
+    {
+      delete_page(page);
     }
 
   g_current_page = page;
   creating = g_pages[page] == NULL;
 
-  for (i = 0; i < 4; i++)
+  for (i = 0; i < HOME_PAGE_COUNT; i++)
     {
       lv_obj_set_style_bg_color(g_nav_buttons[i],
                                 lv_color_hex(i == page ? COLOR_SURFACE_2 :
@@ -1815,6 +2041,9 @@ static void show_page(unsigned int page)
   lv_obj_set_style_bg_opa(g_pages[page], LV_OPA_COVER, 0);
   lv_obj_clear_flag(g_pages[page], LV_OBJ_FLAG_SCROLLABLE);
   g_content = g_pages[page];
+  g_device_binding_counts[page] = 0;
+  memset(g_device_bindings[page], 0, sizeof(g_device_bindings[page]));
+  memset(g_scene_bindings[page], 0, sizeof(g_scene_bindings[page]));
   g_status_label = NULL;
   g_settings_network_label = NULL;
   g_settings_probe_label = NULL;
@@ -1845,6 +2074,7 @@ static void show_page(unsigned int page)
   g_page_settings_probe_labels[page] = g_settings_probe_label;
   g_page_settings_account_labels[page] = g_settings_account_label;
   g_page_home_summary_labels[page] = g_home_summary_label;
+  g_page_model_revisions[page] = g_family_ui_revision;
   lv_obj_invalidate(g_content);
   home_panel_mijia_get_snapshot(&snapshot);
   apply_mijia_snapshot(&snapshot);
@@ -1852,32 +2082,224 @@ static void show_page(unsigned int page)
          page, (unsigned int)g_family_model.revision);
 }
 
-static void clear_page_cache(void)
+static void delete_page(unsigned int page)
 {
-  unsigned int page;
-
-  lv_indev_reset(NULL, NULL);
-  for (page = 0; page < 4; page++)
+  if (page >= HOME_PAGE_COUNT)
     {
-      if (g_pages[page] != NULL)
+      return;
+    }
+
+  if (g_pages[page] != NULL)
+    {
+      lv_obj_delete(g_pages[page]);
+      g_pages[page] = NULL;
+    }
+
+  g_page_status_labels[page] = NULL;
+  g_page_settings_network_labels[page] = NULL;
+  g_page_settings_probe_labels[page] = NULL;
+  g_page_settings_account_labels[page] = NULL;
+  g_page_home_summary_labels[page] = NULL;
+  g_page_model_revisions[page] = UINT32_MAX;
+  g_device_binding_counts[page] = 0;
+  memset(g_device_bindings[page], 0, sizeof(g_device_bindings[page]));
+  memset(g_scene_bindings[page], 0, sizeof(g_scene_bindings[page]));
+
+  if (page == 1)
+    {
+      memset(g_room_buttons, 0, sizeof(g_room_buttons));
+      g_room_title_label = NULL;
+      g_room_summary_label = NULL;
+      g_room_device_host = NULL;
+    }
+
+  if (g_current_page == page)
+    {
+      g_content = NULL;
+      g_status_label = NULL;
+      g_settings_network_label = NULL;
+      g_settings_probe_label = NULL;
+      g_settings_account_label = NULL;
+      g_home_summary_label = NULL;
+    }
+}
+
+static bool device_structure_changed(
+  const struct home_panel_device_s *before,
+  const struct home_panel_device_s *after)
+{
+  return strcmp(before->did, after->did) != 0 ||
+         strcmp(before->name, after->name) != 0 ||
+         strcmp(before->room, after->room) != 0 ||
+         strcmp(before->model, after->model) != 0 ||
+         strcmp(before->type, after->type) != 0 ||
+         before->has_power != after->has_power ||
+         before->power_writable != after->power_writable ||
+         before->power_siid != after->power_siid ||
+         before->power_piid != after->power_piid ||
+         before->has_brightness != after->has_brightness ||
+         before->has_temperature != after->has_temperature ||
+         before->has_humidity != after->has_humidity ||
+         before->has_battery != after->has_battery;
+}
+
+static bool family_structure_changed(
+  const struct home_panel_family_model_s *before,
+  const struct home_panel_family_model_s *after)
+{
+  unsigned int index;
+
+  if (before->device_count != after->device_count ||
+      before->room_count != after->room_count ||
+      before->scene_count != after->scene_count ||
+      before->mqtt_connected != after->mqtt_connected ||
+      strcmp(before->event_source, after->event_source) != 0)
+    {
+      return true;
+    }
+
+  for (index = 0; index < after->device_count; index++)
+    {
+      if (device_structure_changed(&before->devices[index],
+                                   &after->devices[index]))
         {
-          lv_obj_delete(g_pages[page]);
-          g_pages[page] = NULL;
+          return true;
         }
     }
 
-  memset(g_page_status_labels, 0, sizeof(g_page_status_labels));
-  memset(g_page_settings_network_labels, 0,
-         sizeof(g_page_settings_network_labels));
-  memset(g_page_settings_probe_labels, 0,
-         sizeof(g_page_settings_probe_labels));
-  memset(g_page_settings_account_labels, 0,
-         sizeof(g_page_settings_account_labels));
-  memset(g_page_home_summary_labels, 0,
-         sizeof(g_page_home_summary_labels));
-  memset(g_device_bindings, 0, sizeof(g_device_bindings));
-  memset(g_scene_bindings, 0, sizeof(g_scene_bindings));
-  g_content = NULL;
+  for (index = 0; index < after->room_count; index++)
+    {
+      if (strcmp(before->rooms[index].name, after->rooms[index].name) != 0 ||
+          before->rooms[index].device_count !=
+          after->rooms[index].device_count)
+        {
+          return true;
+        }
+    }
+
+  for (index = 0; index < after->scene_count; index++)
+    {
+      if (strcmp(before->scenes[index].id, after->scenes[index].id) != 0 ||
+          strcmp(before->scenes[index].name,
+                 after->scenes[index].name) != 0)
+        {
+          return true;
+        }
+    }
+
+  return false;
+}
+
+static void update_device_binding(
+  struct home_panel_device_binding_s *binding)
+{
+  const struct home_panel_device_s *device = binding->device;
+  bool checked;
+  char value[32];
+
+  if (device == NULL || binding->button == NULL ||
+      binding->value_label == NULL || binding->state_label == NULL)
+    {
+      return;
+    }
+
+  checked = device->has_power && device->power;
+  format_device_value(device, value, sizeof(value));
+  lv_label_set_text(binding->value_label, value);
+  lv_label_set_text(binding->state_label, device_state_text(device));
+  lv_obj_set_style_text_color(
+    binding->state_label,
+    lv_color_hex(checked ? COLOR_GREEN : COLOR_MUTED), 0);
+  if (checked)
+    {
+      lv_obj_add_state(binding->button, LV_STATE_CHECKED);
+    }
+  else
+    {
+      lv_obj_remove_state(binding->button, LV_STATE_CHECKED);
+    }
+
+  lv_obj_set_style_bg_color(
+    binding->button,
+    lv_color_hex(checked ? COLOR_GREEN : COLOR_SURFACE_2), 0);
+  if (device->online)
+    {
+      lv_obj_remove_state(binding->button, LV_STATE_DISABLED);
+    }
+  else
+    {
+      lv_obj_add_state(binding->button, LV_STATE_DISABLED);
+    }
+}
+
+static void update_model_widgets(void)
+{
+  const struct home_panel_room_s *environment = NULL;
+  unsigned int page;
+  unsigned int index;
+  char text[96];
+
+  for (page = 0; page < HOME_PAGE_COUNT; page++)
+    {
+      for (index = 0; index < g_device_binding_counts[page]; index++)
+        {
+          update_device_binding(&g_device_bindings[page][index]);
+        }
+    }
+
+  for (index = 0; index < g_family_model.room_count; index++)
+    {
+      if (g_family_model.rooms[index].has_temperature)
+        {
+          environment = &g_family_model.rooms[index];
+          if (strcmp(environment->name, "客厅") == 0)
+            {
+              break;
+            }
+        }
+    }
+
+  if (g_page_home_summary_labels[0] != NULL)
+    {
+      if (environment != NULL)
+        {
+          snprintf(text, sizeof(text), "%s %d°C  ·  湿度 %d%%",
+                   environment->name, environment->temperature,
+                   environment->humidity);
+        }
+      else
+        {
+          snprintf(text, sizeof(text), "环境传感器暂无数据");
+        }
+      lv_label_set_text(g_page_home_summary_labels[0], text);
+    }
+
+  if (g_page_status_labels[0] != NULL)
+    {
+      snprintf(text, sizeof(text), "%u/%u 台在线",
+               g_family_model.online_count, g_family_model.device_count);
+      lv_label_set_text(g_page_status_labels[0], text);
+      lv_obj_set_style_text_color(g_page_status_labels[0],
+                                  lv_color_hex(COLOR_MUTED), 0);
+    }
+
+  if (g_room_summary_label != NULL &&
+      g_selected_room < g_family_model.room_count)
+    {
+      const struct home_panel_room_s *room =
+        &g_family_model.rooms[g_selected_room];
+
+      if (room->has_temperature && room->has_humidity)
+        {
+          snprintf(text, sizeof(text), "%u 台设备 · %d°C · 湿度 %d%%",
+                   room->device_count, room->temperature, room->humidity);
+        }
+      else
+        {
+          snprintf(text, sizeof(text), "%u 台设备", room->device_count);
+        }
+      lv_label_set_text(g_room_summary_label, text);
+    }
 }
 
 static int refresh_family_model(
@@ -1885,8 +2307,7 @@ static int refresh_family_model(
 {
   struct home_panel_family_model_s model;
   bool changed;
-  char *json;
-  size_t size;
+  bool structure_changed;
   int ret;
 
   if (snapshot->revision == 0 || snapshot->json_size == 0)
@@ -1894,21 +2315,7 @@ static int refresh_family_model(
       return -EAGAIN;
     }
 
-  json = malloc(snapshot->json_size + 1);
-  if (json == NULL)
-    {
-      return -ENOMEM;
-    }
-
-  ret = home_panel_mijia_copy_family_json(snapshot->revision, json,
-                                           snapshot->json_size + 1,
-                                           &size);
-  if (ret == 0)
-    {
-      json[size] = '\0';
-      ret = home_panel_mijia_model_parse(json, snapshot->revision, &model);
-    }
-  free(json);
+  ret = home_panel_mijia_get_family_model(snapshot->revision, &model);
 
   if (ret == 0)
     {
@@ -1919,14 +2326,30 @@ static int refresh_family_model(
                        sizeof(model) - sizeof(model.revision)) != 0;
       if (changed)
         {
+          structure_changed = !g_family_model_valid ||
+            family_structure_changed(&g_family_model, &model);
           memcpy(&g_family_model, &model, sizeof(g_family_model));
           g_family_model_valid = true;
+          if (structure_changed)
+            {
+              g_family_ui_revision++;
+              if (g_family_ui_revision == 0)
+                {
+                  g_family_ui_revision = 1;
+                }
+            }
+          else
+            {
+              update_model_widgets();
+              ret = 2;
+            }
           syslog(LOG_INFO,
                  "[HOME][MODEL] revision=%u devices=%u online=%u rooms=%u "
-                 "scenes=%u event=%s mqtt=%u\n",
+                 "scenes=%u event=%s mqtt=%u update=%s\n",
                  (unsigned int)model.revision, model.device_count,
                  model.online_count, model.room_count, model.scene_count,
-                 model.event_source, model.mqtt_connected ? 1 : 0);
+                 model.event_source, model.mqtt_connected ? 1 : 0,
+                 structure_changed ? "rebuild" : "in-place");
         }
       else
         {
@@ -1970,11 +2393,11 @@ static void create_home_screen(void)
                              &home_panel_digits_28);
   g_date_label = make_label(topbar, "等待网络校时", 132, 26,
                             lv_color_hex(COLOR_MUTED),
-                            &home_panel_misans_18);
+                            home_panel_font_get());
   g_network_label = make_label(topbar,
                                LV_SYMBOL_WARNING "  有线网络未连接",
                                650, 26, lv_color_hex(COLOR_ORANGE),
-                               &home_panel_misans_18);
+                               home_panel_font_get());
 
   login = lv_button_create(topbar);
   lv_obj_set_size(login, 118, 44);
@@ -2014,6 +2437,26 @@ static void create_home_screen(void)
   update_time_ui(true);
 }
 
+static void log_fpu_state(void)
+{
+#ifdef CONFIG_ARCH_FPU
+  uint32_t mstatus;
+  uint32_t mexstatus;
+  uint32_t fcsr;
+
+  __asm__ __volatile__("csrr %0, mstatus" : "=r"(mstatus));
+  __asm__ __volatile__("csrr %0, 0x7e1" : "=r"(mexstatus));
+  __asm__ __volatile__("csrr %0, fcsr" : "=r"(fcsr));
+  syslog(LOG_INFO,
+         "[HOME][FPU] mstatus=%08lx fs=%lu fcsr=%08lx mexstatus=%08lx "
+         "spush=%lu spswap=%lu\n",
+         (unsigned long)mstatus, (unsigned long)((mstatus >> 13) & 3u),
+         (unsigned long)fcsr, (unsigned long)mexstatus,
+         (unsigned long)((mexstatus >> 16) & 1u),
+         (unsigned long)((mexstatus >> 17) & 1u));
+#endif
+}
+
 int main(int argc, char *argv[])
 {
   lv_nuttx_dsc_t info;
@@ -2036,7 +2479,15 @@ int main(int argc, char *argv[])
       return 1;
     }
 
+  log_fpu_state();
   lv_init();
+  ret = home_panel_font_initialize();
+  if (ret < 0)
+    {
+      syslog(LOG_ERR,
+             "[HOME][FONT] using built-in subset fallback ret=%d\n", ret);
+    }
+
   lv_nuttx_dsc_init(&info);
 #ifdef CONFIG_INPUT_TOUCHSCREEN
   info.input_path = CONFIG_D13X_HOME_PANEL_INPUT_DEVPATH;
@@ -2084,7 +2535,6 @@ int main(int argc, char *argv[])
         {
           displayed_state = g_network_state;
           apply_network_state(displayed_state);
-          lv_refr_now(result.disp);
           syslog(LOG_INFO, "[HOME][UI] network=%s\n",
                  network_state_name(displayed_state));
         }
@@ -2096,7 +2546,6 @@ int main(int argc, char *argv[])
         {
           displayed_mijia_revision = mijia_snapshot.revision;
           apply_mijia_snapshot(&mijia_snapshot);
-          lv_refr_now(result.disp);
           syslog(LOG_INFO, "[HOME][UI] mijia=%s\n",
                  home_panel_mijia_state_name(mijia_snapshot.state));
         }
@@ -2121,11 +2570,16 @@ int main(int argc, char *argv[])
               displayed_family_revision = family_snapshot.revision;
               if (ret == 0)
                 {
-                  clear_page_cache();
-                  show_page(g_current_page);
-                  lv_refr_now(result.disp);
+                  g_model_refresh_pending = true;
                 }
             }
+        }
+
+      if (g_model_refresh_pending &&
+          lv_indev_get_state(result.indev) == LV_INDEV_STATE_RELEASED)
+        {
+          g_model_refresh_pending = false;
+          show_page(g_current_page);
         }
 
       home_panel_mijia_get_command_snapshot(&command_snapshot);

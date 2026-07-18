@@ -85,6 +85,29 @@ static bool model_writable(cJSON *property)
   return rw != NULL && strchr(rw, 'w') != NULL;
 }
 
+static void model_property_ids(cJSON *property, uint16_t *siid,
+                               uint16_t *piid)
+{
+  cJSON *item;
+
+  if (property == NULL)
+    {
+      return;
+    }
+
+  item = cJSON_GetObjectItemCaseSensitive(property, "siid");
+  if (cJSON_IsNumber(item) && item->valueint > 0 && item->valueint <= 65535)
+    {
+      *siid = (uint16_t)item->valueint;
+    }
+
+  item = cJSON_GetObjectItemCaseSensitive(property, "piid");
+  if (cJSON_IsNumber(item) && item->valueint > 0 && item->valueint <= 65535)
+    {
+      *piid = (uint16_t)item->valueint;
+    }
+}
+
 static void model_brightness_range(cJSON *property,
                                    struct home_panel_device_s *device)
 {
@@ -126,9 +149,12 @@ static void model_parse_device(cJSON *object,
 
   item = model_property(properties, "on");
   device->has_power = model_boolean(item, &device->power);
-  device->power_writable = device->has_power && model_writable(item);
+  model_property_ids(item, &device->power_siid, &device->power_piid);
+  device->power_writable = model_writable(item);
 
   item = model_property(properties, "brightness");
+  model_property_ids(item, &device->brightness_siid,
+                     &device->brightness_piid);
   if (model_number(item, &value))
     {
       device->has_brightness = true;
@@ -137,6 +163,8 @@ static void model_parse_device(cJSON *object,
     }
 
   item = model_property(properties, "temperature");
+  model_property_ids(item, &device->temperature_siid,
+                     &device->temperature_piid);
   if (model_number(item, &value))
     {
       device->has_temperature = true;
@@ -144,6 +172,8 @@ static void model_parse_device(cJSON *object,
     }
 
   item = model_property(properties, "relative-humidity");
+  model_property_ids(item, &device->humidity_siid,
+                     &device->humidity_piid);
   if (model_number(item, &value))
     {
       device->has_humidity = true;
@@ -151,6 +181,8 @@ static void model_parse_device(cJSON *object,
     }
 
   item = model_property(properties, "battery-level");
+  model_property_ids(item, &device->battery_siid,
+                     &device->battery_piid);
   if (model_number(item, &value))
     {
       device->has_battery = true;
@@ -174,6 +206,158 @@ static struct home_panel_room_s *model_find_room(
   return NULL;
 }
 
+void home_panel_mijia_model_refresh_rooms(
+  struct home_panel_family_model_s *model)
+{
+  unsigned int index;
+
+  for (index = 0; index < model->room_count; index++)
+    {
+      model->rooms[index].has_temperature = false;
+      model->rooms[index].temperature = 0;
+      model->rooms[index].has_humidity = false;
+      model->rooms[index].humidity = 0;
+    }
+
+  for (index = 0; index < model->device_count; index++)
+    {
+      struct home_panel_device_s *device = &model->devices[index];
+      struct home_panel_room_s *room;
+
+      if (strcmp(device->type, "environment-sensor") != 0)
+        {
+          continue;
+        }
+
+      room = model_find_room(model, device->room);
+      if (room == NULL)
+        {
+          continue;
+        }
+
+      room->has_temperature = device->has_temperature;
+      room->temperature = device->temperature;
+      room->has_humidity = device->has_humidity;
+      room->humidity = device->humidity;
+    }
+}
+
+int home_panel_mijia_model_apply_online(
+  struct home_panel_family_model_s *model, const char *did, bool online)
+{
+  unsigned int index;
+
+  for (index = 0; index < model->device_count; index++)
+    {
+      struct home_panel_device_s *device = &model->devices[index];
+
+      if (strcmp(device->did, did) != 0)
+        {
+          continue;
+        }
+
+      if (device->online == online)
+        {
+          return 0;
+        }
+
+      device->online = online;
+      if (online)
+        {
+          model->online_count++;
+        }
+      else if (model->online_count > 0)
+        {
+          model->online_count--;
+        }
+      return 1;
+    }
+
+  return -ENOENT;
+}
+
+int home_panel_mijia_model_apply_property(
+  struct home_panel_family_model_s *model, const char *did,
+  uint16_t siid, uint16_t piid, bool is_boolean, bool boolean_value,
+  bool is_number, int number_value)
+{
+  struct home_panel_device_s *device = NULL;
+  int *number_target = NULL;
+  bool *has_target = NULL;
+  unsigned int index;
+
+  for (index = 0; index < model->device_count; index++)
+    {
+      if (strcmp(model->devices[index].did, did) == 0)
+        {
+          device = &model->devices[index];
+          break;
+        }
+    }
+
+  if (device == NULL)
+    {
+      return -ENOENT;
+    }
+
+  if (device->power_siid == siid && device->power_piid == piid)
+    {
+      if (!is_boolean)
+        {
+          return -EBADMSG;
+        }
+
+      if (device->has_power && device->power == boolean_value)
+        {
+          return 0;
+        }
+
+      device->has_power = true;
+      device->power = boolean_value;
+      return 1;
+    }
+
+  if (device->brightness_siid == siid && device->brightness_piid == piid)
+    {
+      has_target = &device->has_brightness;
+      number_target = &device->brightness;
+    }
+  else if (device->temperature_siid == siid &&
+           device->temperature_piid == piid)
+    {
+      has_target = &device->has_temperature;
+      number_target = &device->temperature;
+    }
+  else if (device->humidity_siid == siid && device->humidity_piid == piid)
+    {
+      has_target = &device->has_humidity;
+      number_target = &device->humidity;
+    }
+  else if (device->battery_siid == siid && device->battery_piid == piid)
+    {
+      has_target = &device->has_battery;
+      number_target = &device->battery;
+    }
+  else
+    {
+      return -ENOENT;
+    }
+
+  if (!is_number)
+    {
+      return -EBADMSG;
+    }
+
+  if (*has_target && *number_target == number_value)
+    {
+      return 0;
+    }
+
+  *has_target = true;
+  *number_target = number_value;
+  return 1;
+}
+
 int home_panel_mijia_model_parse(const char *json, uint32_t revision,
                                  struct home_panel_family_model_s *model)
 {
@@ -184,7 +368,6 @@ int home_panel_mijia_model_parse(const char *json, uint32_t revision,
   cJSON *root;
   cJSON *rooms;
   cJSON *scenes;
-  unsigned int index;
 
   if (json == NULL || model == NULL)
     {
@@ -258,27 +441,7 @@ int home_panel_mijia_model_parse(const char *json, uint32_t revision,
         }
     }
 
-  for (index = 0; index < model->device_count; index++)
-    {
-      struct home_panel_device_s *device = &model->devices[index];
-      struct home_panel_room_s *room;
-
-      if (strcmp(device->type, "environment-sensor") != 0)
-        {
-          continue;
-        }
-
-      room = model_find_room(model, device->room);
-      if (room == NULL)
-        {
-          continue;
-        }
-
-      room->has_temperature = device->has_temperature;
-      room->temperature = device->temperature;
-      room->has_humidity = device->has_humidity;
-      room->humidity = device->humidity;
-    }
+  home_panel_mijia_model_refresh_rooms(model);
 
   cJSON_ArrayForEach(object, scenes)
     {

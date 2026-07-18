@@ -7,15 +7,15 @@
             "env_r":      { "size": "128k" },
             "userid":     { "size": "256k" }, // at least 16KB
             "os":         { "size": "3m" },
-            "rodata":     { "size": "4m" },
-            "data":       { "size": "7m" }
+            "font":       { "size": "8m" },
+            "data":       { "size": "4m" }
         },
     },
     "image": {
         "info": { // Header information about image
             "platform": "d13x",
             "product": "hengshan-pi",
-            "version": "1.7.7.5",
+            "version": "1.10.11.7",
             "media": {
                 "type": "spi-nor",
                 "device_id": 0,
@@ -49,10 +49,10 @@
                 "attr": ["mtd", "required"],
                 "part": ["os"]
             },
-            "rodata": {
-                "file": "rodata.fatfs",
-                "attr": ["mtd", "optional"],
-                "part": ["rodata"]
+            "font": {
+                "file": "MiSans-Regular-18-full.bin",
+                "attr": ["mtd", "required"],
+                "part": ["font"]
             },
             "data": {
                 "file": "data.lfs",

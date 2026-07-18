@@ -66,17 +66,21 @@ struct home_panel_mijia_command_snapshot_s
   char message[96];
 };
 
+struct home_panel_family_model_s;
+
 int home_panel_mijia_initialize(void);
 int home_panel_mijia_request_login(void);
 void home_panel_mijia_get_snapshot(
   struct home_panel_mijia_snapshot_s *snapshot);
 void home_panel_mijia_get_family_snapshot(
   struct home_panel_mijia_family_snapshot_s *snapshot);
-int home_panel_mijia_copy_family_json(uint32_t revision, void *buffer,
-                                      size_t capacity, size_t *size);
+int home_panel_mijia_get_family_model(
+  uint32_t revision, struct home_panel_family_model_s *model);
 int home_panel_mijia_request_bool_property(const char *did,
                                             const char *device_name,
                                             const char *property_name,
+                                            uint16_t siid,
+                                            uint16_t piid,
                                             bool value);
 int home_panel_mijia_request_scene(const char *scene_id,
                                    const char *scene_name);
