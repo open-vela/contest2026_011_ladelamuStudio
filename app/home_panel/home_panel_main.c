@@ -233,6 +233,7 @@ enum network_state_e
 static lv_image_dsc_t g_login_qr_image;
 static uint8_t *g_login_qr_data;
 static uint32_t g_login_qr_revision;
+static lv_timer_t *g_login_success_timer;
 static struct home_panel_family_model_s g_family_model;
 static struct home_panel_family_model_s g_family_update_model;
 
@@ -1046,14 +1047,18 @@ static void scene_clicked(lv_event_t *event)
  * moved to ui/page_rooms.c
  */
 
-static void login_close(lv_event_t *event)
+static void login_close_dialog(lv_obj_t *shade)
 {
-  lv_obj_t *shade = lv_event_get_user_data(event);
+  if (shade == NULL || shade != g_login_shade)
+    {
+      return;
+    }
 
-  g_login_shade = NULL;
-  g_login_qr = NULL;
-  g_login_message = NULL;
-  g_login_action_label = NULL;
+  if (g_login_success_timer != NULL)
+    {
+      lv_timer_delete(g_login_success_timer);
+      g_login_success_timer = NULL;
+    }
 
   /* Release the QR payload so a closed login dialog does not keep a ~115 KiB
    * allocation resident for the whole session.
@@ -1062,14 +1067,37 @@ static void login_close(lv_event_t *event)
   if (g_login_qr_data != NULL)
     {
       lv_image_cache_drop(&g_login_qr_image);
-      lv_image_set_src(g_login_qr, NULL);
+      if (g_login_qr != NULL)
+        {
+          lv_image_set_src(g_login_qr, NULL);
+        }
+
       free(g_login_qr_data);
       g_login_qr_data = NULL;
       g_login_qr_revision = 0;
       memset(&g_login_qr_image, 0, sizeof(g_login_qr_image));
     }
 
+  g_login_shade = NULL;
+  g_login_qr = NULL;
+  g_login_message = NULL;
+  g_login_action_label = NULL;
   lv_obj_delete_async(shade);
+}
+
+static void login_close(lv_event_t *event)
+{
+  login_close_dialog(lv_event_get_user_data(event));
+}
+
+static void login_success_timeout(lv_timer_t *timer)
+{
+  lv_obj_t *shade = g_login_shade;
+
+  g_login_success_timer = NULL;
+  lv_timer_delete(timer);
+  login_close_dialog(shade);
+  show_page(0);
 }
 
 static bool login_update_qr(
@@ -1433,9 +1461,20 @@ static void apply_mijia_snapshot(
       lv_obj_set_style_text_color(g_login_message,
                                   lv_color_hex(COLOR_GREEN), 0);
       lv_label_set_text(g_login_action_label, "完成");
+      if (g_login_success_timer == NULL)
+        {
+          g_login_success_timer =
+            lv_timer_create(login_success_timeout, 3000, NULL);
+        }
     }
   else
     {
+      if (g_login_success_timer != NULL)
+        {
+          lv_timer_delete(g_login_success_timer);
+          g_login_success_timer = NULL;
+        }
+
       lv_obj_add_flag(g_login_qr, LV_OBJ_FLAG_HIDDEN);
       lv_label_set_text(g_login_action_label,
                         snapshot->state == HOME_PANEL_MIJIA_STARTING ?

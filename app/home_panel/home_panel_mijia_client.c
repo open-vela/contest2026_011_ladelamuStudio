@@ -1054,6 +1054,9 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   ret = webclient_perform(&context);
   if (ret < 0 || context.http_status < 200 || context.http_status >= 300)
     {
+      syslog(LOG_WARNING,
+             "[HOME][SYNC] webclient ret=%d errno=%d status=%u\n",
+             ret, errno, context.http_status);
       ret = ret < 0 ? ret :
             context.http_status == 423 ? -EACCES : -EPROTO;
       goto out;
