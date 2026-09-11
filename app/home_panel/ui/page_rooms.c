@@ -321,9 +321,11 @@ static void make_detail_control(lv_obj_t *parent, int y,
       options[0] = '\0';
       for (index = 0; index < property->option_count; index++)
         {
+          const char *option_label = home_ui_option_display_name(
+            property->name, property->options[index].label);
           int written = snprintf(options + used, sizeof(options) - used,
                                  "%s%s", index == 0 ? "" : "\n",
-                                 property->options[index].label);
+                                 option_label);
           if (written < 0 || (size_t)written >= sizeof(options) - used)
             {
               break;
@@ -336,7 +338,9 @@ static void make_detail_control(lv_obj_t *parent, int y,
         }
       value_label = home_ui_make_label(row,
                                property->option_count > 0 ?
-                                 property->options[selected].label : "--",
+                                  home_ui_option_display_name(
+                                    property->name,
+                                    property->options[selected].label) : "--",
                                0, 32, lv_color_hex(COLOR_SENSOR),
                                home_panel_font_get());
       control = lv_dropdown_create(row);

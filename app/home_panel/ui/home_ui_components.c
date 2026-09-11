@@ -964,8 +964,105 @@ const char *home_ui_control_display_name(const char *name)
     {
       return "门窗状态";
     }
+  if (strcmp(name, "temperature") == 0)
+    {
+      return "温度";
+    }
+  if (strcmp(name, "humidity") == 0 ||
+      strcmp(name, "relative-humidity") == 0)
+    {
+      return "湿度";
+    }
+  if (strcmp(name, "battery") == 0 ||
+      strcmp(name, "battery-level") == 0)
+    {
+      return "电量";
+    }
 
   return name;
+}
+
+const char *home_ui_option_display_name(const char *property_name,
+                                        const char *label)
+{
+  (void)property_name;
+
+  if (label == NULL || label[0] == '\0')
+    {
+      return "未设置";
+    }
+  if (strcmp(label, "Auto") == 0 || strcmp(label, "auto") == 0 ||
+      strcmp(label, "Automatic") == 0)
+    {
+      return "自动";
+    }
+  if (strcmp(label, "Manual") == 0 || strcmp(label, "manual") == 0)
+    {
+      return "手动";
+    }
+  if (strcmp(label, "Low") == 0 || strcmp(label, "low") == 0)
+    {
+      return "低";
+    }
+  if (strcmp(label, "Medium") == 0 || strcmp(label, "medium") == 0 ||
+      strcmp(label, "Mid") == 0)
+    {
+      return "中";
+    }
+  if (strcmp(label, "High") == 0 || strcmp(label, "high") == 0)
+    {
+      return "高";
+    }
+  if (strcmp(label, "Silent") == 0 || strcmp(label, "silent") == 0)
+    {
+      return "静音";
+    }
+  if (strcmp(label, "Strong") == 0 || strcmp(label, "strong") == 0)
+    {
+      return "强力";
+    }
+  if (strcmp(label, "On") == 0 || strcmp(label, "on") == 0)
+    {
+      return "开启";
+    }
+  if (strcmp(label, "Off") == 0 || strcmp(label, "off") == 0)
+    {
+      return "关闭";
+    }
+  if (strcmp(label, "Open") == 0 || strcmp(label, "open") == 0)
+    {
+      return "打开";
+    }
+  if (strcmp(label, "Close") == 0 || strcmp(label, "close") == 0)
+    {
+      return "关闭";
+    }
+  if (strcmp(label, "Cool") == 0 || strcmp(label, "cool") == 0)
+    {
+      return "制冷";
+    }
+  if (strcmp(label, "Heat") == 0 || strcmp(label, "heat") == 0)
+    {
+      return "制热";
+    }
+  if (strcmp(label, "Dry") == 0 || strcmp(label, "dry") == 0)
+    {
+      return "除湿";
+    }
+  if (strcmp(label, "Fan") == 0 || strcmp(label, "fan") == 0)
+    {
+      return "送风";
+    }
+  if (strcmp(label, "Sleep") == 0 || strcmp(label, "sleep") == 0)
+    {
+      return "睡眠";
+    }
+  if (strcmp(label, "Standard") == 0 || strcmp(label, "standard") == 0)
+    {
+      return "标准";
+    }
+
+  return label;
 }
 
 const char *home_ui_action_display_name(

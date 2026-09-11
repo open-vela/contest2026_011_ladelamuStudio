@@ -77,6 +77,8 @@ const char *home_ui_device_state_text(const struct home_panel_device_s *device);
 void home_ui_format_device_value(const struct home_panel_device_s *device,
                                  char *value, size_t capacity);
 const char *home_ui_control_display_name(const char *name);
+const char *home_ui_option_display_name(const char *property_name,
+                                        const char *label);
 const char *home_ui_action_display_name(
   const struct home_panel_action_s *action);
 void home_ui_format_control_value(const struct home_panel_control_s *property,
