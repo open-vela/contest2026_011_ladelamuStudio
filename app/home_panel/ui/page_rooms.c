@@ -8,6 +8,31 @@
 
 #define UI_SLOW_LOG_MS  26
 
+static void style_dropdown_list(lv_event_t *event)
+{
+  lv_obj_t *dropdown = lv_event_get_target(event);
+  lv_obj_t *list = lv_dropdown_get_list(dropdown);
+
+  if (list == NULL)
+    {
+      return;
+    }
+
+  lv_obj_set_style_bg_color(list, lv_color_hex(COLOR_SURFACE_2),
+                            LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(list, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(list, 1, LV_PART_MAIN);
+  lv_obj_set_style_border_color(list, lv_color_hex(COLOR_BORDER),
+                                LV_PART_MAIN);
+  lv_obj_set_style_text_color(list, lv_color_hex(COLOR_TEXT),
+                              LV_PART_MAIN);
+  lv_obj_set_style_bg_color(list, lv_color_hex(THEME_COLOR_NAV_ACTIVE_BG),
+                            LV_PART_SELECTED);
+  lv_obj_set_style_bg_opa(list, LV_OPA_COVER, LV_PART_SELECTED);
+  lv_obj_set_style_text_color(list, lv_color_hex(COLOR_TEXT),
+                              LV_PART_SELECTED);
+}
+
 /* Forward declarations */
 
 static void show_room_device_detail(unsigned int device_index);
@@ -237,8 +262,13 @@ static void make_detail_control(lv_obj_t *parent, int y,
       lv_obj_set_style_shadow_width(control, 0, 0);
       lv_obj_set_style_border_width(control, 0, 0);
       lv_obj_set_style_bg_color(control, lv_color_hex(COLOR_SURFACE_2), 0);
+      lv_obj_set_style_bg_opa(control, LV_OPA_COVER, 0);
       lv_obj_set_style_bg_color(control, lv_color_hex(COLOR_GREEN),
                                 LV_STATE_CHECKED);
+      lv_obj_set_style_bg_opa(control, LV_OPA_COVER, LV_STATE_CHECKED);
+      lv_obj_set_style_bg_color(control, lv_color_hex(COLOR_SURFACE),
+                                LV_STATE_DISABLED);
+      lv_obj_set_style_bg_opa(control, LV_OPA_60, LV_STATE_DISABLED);
       lv_obj_set_ext_click_area(control, 10);
       lv_obj_add_flag(control, LV_OBJ_FLAG_CHECKABLE);
       if (property->boolean_value)
@@ -312,10 +342,15 @@ static void make_detail_control(lv_obj_t *parent, int y,
       control = lv_dropdown_create(row);
       lv_obj_set_size(control, 210, 42);
       lv_obj_align(control, LV_ALIGN_TOP_RIGHT, 0, 0);
+      lv_obj_set_style_bg_color(control, lv_color_hex(COLOR_SURFACE_2), 0);
+      lv_obj_set_style_bg_opa(control, LV_OPA_COVER, 0);
+      lv_obj_set_style_border_width(control, 1, 0);
+      lv_obj_set_style_border_color(control, lv_color_hex(COLOR_BORDER), 0);
       lv_dropdown_set_options(control, options);
       lv_dropdown_set_selected(control, selected);
       lv_obj_set_style_text_font(control, home_panel_font_get(), 0);
       lv_obj_set_style_radius(control, THEME_RADIUS_CTRL, 0);
+      lv_obj_add_event_cb(control, style_dropdown_list, LV_EVENT_READY, NULL);
       lv_obj_add_event_cb(control, g_ui.cb_detail_enum_changed,
                           LV_EVENT_VALUE_CHANGED, binding);
     }
@@ -394,6 +429,7 @@ static void show_room_device_detail(unsigned int device_index)
   lv_obj_set_style_border_width(back, 1, 0);
   lv_obj_set_style_border_color(back, lv_color_hex(COLOR_BORDER), 0);
   lv_obj_set_style_bg_color(back, lv_color_hex(COLOR_SURFACE), 0);
+  lv_obj_set_style_bg_opa(back, LV_OPA_COVER, 0);
   lv_obj_add_event_cb(back, close_room_device_detail, LV_EVENT_CLICKED, NULL);
   label = lv_label_create(back);
   lv_label_set_text(label, LV_SYMBOL_LEFT);
@@ -497,7 +533,8 @@ static void show_room_device_detail(unsigned int device_index)
       binding->device = device;
       binding->action = &device->actions[index];
       button = home_ui_make_action_button(g_ui.room_detail_host,
-                                  device->actions[index].display_name,
+                                  home_ui_action_display_name(
+                                    &device->actions[index]),
                                   0, y, 240);
       lv_obj_remove_event_cb(button, home_ui_action_clicked);
       lv_obj_add_event_cb(button, g_ui.cb_detail_action_clicked,

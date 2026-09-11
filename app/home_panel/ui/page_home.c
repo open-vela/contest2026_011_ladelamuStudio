@@ -157,6 +157,13 @@ static void make_device_card(lv_obj_t *parent, int x, int y,
                             lv_color_hex(checked ?
                                          COLOR_GREEN :
                                          COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_GREEN),
+                            LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_SURFACE),
+                            LV_STATE_DISABLED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_60, LV_STATE_DISABLED);
   lv_obj_add_flag(toggle, LV_OBJ_FLAG_CHECKABLE);
   if (checked)
     {

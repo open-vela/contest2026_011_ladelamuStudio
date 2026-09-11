@@ -25,6 +25,9 @@ static void fast_button_configure(lv_obj_t *button)
   lv_obj_set_style_transition(button, &trans, 0);
   lv_obj_set_style_transition(button, &trans, LV_STATE_PRESSED);
   lv_obj_set_style_anim_duration(button, 0, 0);
+  lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(button, lv_color_hex(COLOR_BORDER), 0);
   lv_obj_set_style_shadow_width(button, 0, 0);
   lv_obj_set_style_transform_width(button, 0, LV_STATE_PRESSED);
   lv_obj_set_style_transform_height(button, 0, LV_STATE_PRESSED);
@@ -86,6 +89,7 @@ lv_obj_t *component_create_card_button(lv_obj_t *parent, int x, int y,
   lv_obj_set_size(card, width, height);
   lv_obj_set_style_radius(card, THEME_RADIUS_CARD, 0);
   lv_obj_set_style_bg_color(card, lv_color_hex(COLOR_SURFACE), 0);
+  lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
   theme_apply_surface_gradient(card);
   lv_obj_set_style_bg_color(card, lv_color_hex(COLOR_SURFACE_2),
                             LV_STATE_PRESSED);
@@ -143,6 +147,7 @@ lv_obj_t *component_create_button(lv_obj_t *parent, const char *text,
   lv_obj_set_style_border_width(button, 1, 0);
   lv_obj_set_style_border_color(button, lv_color_hex(0x7bb4ff), 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_BLUE), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(0x478ee8),
                             LV_STATE_PRESSED);
   if (callback != NULL)
@@ -170,6 +175,7 @@ lv_obj_t *component_create_icon_button(lv_obj_t *parent, const char *icon,
   lv_obj_set_size(button, size, size);
   lv_obj_set_style_radius(button, THEME_RADIUS_SM, 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_BORDER),
                             LV_STATE_PRESSED);
   lv_obj_set_style_shadow_width(button, 0, 0);
@@ -202,8 +208,13 @@ lv_obj_t *component_create_toggle(lv_obj_t *parent, bool checked,
   lv_obj_set_style_shadow_width(toggle, 0, 0);
   lv_obj_set_style_border_width(toggle, 0, 0);
   lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_GREEN),
                             LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_SURFACE),
+                            LV_STATE_DISABLED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_60, LV_STATE_DISABLED);
   lv_obj_set_ext_click_area(toggle, 10);
   lv_obj_add_flag(toggle, LV_OBJ_FLAG_CHECKABLE);
   if (checked)
@@ -741,6 +752,14 @@ void home_ui_configure_fast_button(lv_obj_t *button)
   lv_obj_set_style_transition(button, &trans, 0);
   lv_obj_set_style_transition(button, &trans, LV_STATE_PRESSED);
   lv_obj_set_style_anim_duration(button, 0, 0);
+  /* Override the LVGL default theme, whose button surface is black on this
+   * target.  Individual buttons can still replace the base color below. */
+  lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_BORDER),
+                            LV_STATE_PRESSED);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, LV_STATE_PRESSED);
+  lv_obj_set_style_text_color(button, lv_color_hex(COLOR_TEXT), 0);
   lv_obj_set_style_shadow_width(button, 0, 0);
   lv_obj_set_style_transform_width(button, 0, LV_STATE_PRESSED);
   lv_obj_set_style_transform_height(button, 0, LV_STATE_PRESSED);
@@ -752,8 +771,13 @@ void home_ui_style_toggle(lv_obj_t *toggle, bool checked)
   lv_obj_set_style_shadow_width(toggle, 0, 0);
   lv_obj_set_style_border_width(toggle, 0, 0);
   lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_GREEN),
                             LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_COVER, LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(toggle, lv_color_hex(COLOR_SURFACE),
+                            LV_STATE_DISABLED);
+  lv_obj_set_style_bg_opa(toggle, LV_OPA_60, LV_STATE_DISABLED);
   lv_obj_set_ext_click_area(toggle, 12);
   if (checked)
     {
@@ -811,6 +835,7 @@ lv_obj_t *home_ui_make_action_button(lv_obj_t *parent, const char *text,
   lv_obj_set_style_border_width(button, 1, 0);
   lv_obj_set_style_border_color(button, lv_color_hex(0x7bb4ff), 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_BLUE), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(0x478ee8),
                             LV_STATE_PRESSED);
   lv_obj_add_event_cb(button, home_ui_action_clicked, LV_EVENT_CLICKED, (void *)text);
@@ -825,6 +850,7 @@ lv_obj_t *home_ui_make_action_button(lv_obj_t *parent, const char *text,
 void home_ui_style_secondary_action(lv_obj_t *button)
 {
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_SURFACE_2), 0);
+  lv_obj_set_style_bg_opa(button, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(button, lv_color_hex(COLOR_BORDER),
                             LV_STATE_PRESSED);
   lv_obj_set_style_border_color(button, lv_color_hex(COLOR_BORDER), 0);
@@ -918,8 +944,77 @@ const char *home_ui_control_display_name(const char *name)
     {
       return "充电保护";
     }
+  if (strcmp(name, "power") == 0 || strcmp(name, "switch-status") == 0)
+    {
+      return "电源状态";
+    }
+  if (strcmp(name, "mode") == 0 || strcmp(name, "work-mode") == 0)
+    {
+      return "工作模式";
+    }
+  if (strcmp(name, "fan-level") == 0 || strcmp(name, "fan-speed") == 0)
+    {
+      return "风速";
+    }
+  if (strcmp(name, "oscillate") == 0 || strcmp(name, "swing-mode") == 0)
+    {
+      return "摆动";
+    }
+  if (strcmp(name, "door") == 0 || strcmp(name, "window") == 0)
+    {
+      return "门窗状态";
+    }
 
   return name;
+}
+
+const char *home_ui_action_display_name(
+  const struct home_panel_action_s *action)
+{
+  const char *name;
+
+  if (action == NULL)
+    {
+      return "执行";
+    }
+
+  name = action->name;
+  if (strcmp(name, "on") == 0 || strcmp(name, "turn-on") == 0 ||
+      strcmp(name, "turn_on") == 0 || strcmp(action->display_name, "Turn On") == 0)
+    {
+      return "开启";
+    }
+  if (strcmp(name, "off") == 0 || strcmp(name, "turn-off") == 0 ||
+      strcmp(name, "turn_off") == 0 || strcmp(action->display_name, "Turn Off") == 0)
+    {
+      return "关闭";
+    }
+  if (strcmp(name, "toggle") == 0 || strcmp(action->display_name, "Toggle") == 0)
+    {
+      return "切换";
+    }
+  if (strcmp(name, "open") == 0 || strcmp(action->display_name, "Open") == 0)
+    {
+      return "打开";
+    }
+  if (strcmp(name, "close") == 0 || strcmp(action->display_name, "Close") == 0)
+    {
+      return "关闭";
+    }
+  if (strcmp(name, "pause") == 0 || strcmp(action->display_name, "Pause") == 0)
+    {
+      return "暂停";
+    }
+  if (strcmp(name, "play") == 0 || strcmp(action->display_name, "Play") == 0)
+    {
+      return "播放";
+    }
+  if (strcmp(name, "stop") == 0 || strcmp(action->display_name, "Stop") == 0)
+    {
+      return "停止";
+    }
+
+  return action->display_name[0] != '\0' ? action->display_name : "执行";
 }
 
 void home_ui_format_control_value(const struct home_panel_control_s *property,

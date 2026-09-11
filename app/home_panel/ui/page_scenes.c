@@ -38,6 +38,7 @@ void scenes_page_create(lv_event_cb_t scene_clicked_cb)
       lv_obj_set_size(card, content_width / 2 - THEME_CARD_GAP / 2, 104);
       lv_obj_set_style_radius(card, THEME_RADIUS_CARD, 0);
       lv_obj_set_style_bg_color(card, lv_color_hex(COLOR_SURFACE), 0);
+      lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
       theme_apply_surface_gradient(card);
       lv_obj_set_style_bg_color(card, lv_color_hex(COLOR_SURFACE_2),
                                 LV_STATE_PRESSED);
@@ -92,6 +93,7 @@ void scenes_page_create(lv_event_cb_t scene_clicked_cb)
       lv_obj_align(exec_button, LV_ALIGN_BOTTOM_RIGHT, 0, 0);
       lv_obj_set_style_radius(exec_button, THEME_RADIUS_CTRL, 0);
       lv_obj_set_style_bg_color(exec_button, lv_color_hex(COLOR_GREEN), 0);
+      lv_obj_set_style_bg_opa(exec_button, LV_OPA_COVER, 0);
       lv_obj_set_style_shadow_width(exec_button, 0, 0);
       lv_obj_set_style_border_width(exec_button, 0, 0);
       if (scene_clicked_cb != NULL)
