@@ -2818,6 +2818,10 @@ int main(int argc, char *argv[])
   /* Poll touch input faster than the display refresh timer so short taps and
    * scroll gestures do not wait for the default 10 ms input sample. */
   lv_timer_set_period(lv_indev_get_read_timer(result.indev), 5);
+  /* Full-frame RGB565 rendering takes 25-60 ms on this target.  A 10 ms
+   * refresh period keeps the UI thread permanently rendering and starves
+   * model updates; 30 FPS leaves time for input and background work. */
+  lv_timer_set_period(lv_display_get_refr_timer(result.disp), 33);
   lv_indev_set_display(result.indev, result.disp);
 
   create_home_screen();
