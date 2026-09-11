@@ -18,8 +18,8 @@ nsh> home_panel
 双槽持久记录，重启后自动解锁并恢复同步。记录采用递增序号和 CRC 校验，写入时
 最后提交有效头，避免掉电产生半条有效凭据。
 
-服务地址由 `CONFIG_D13X_HOME_PANEL_MIJIA_SERVER_URL` 配置，当前实机测试默认值为
-`http://192.168.1.24:8123`。服务端应与开发板处于同一有线局域网；二维码登录和
+服务地址由 `CONFIG_D13X_HOME_PANEL_MIJIA_SERVER_URL` 配置，当前默认值为
+`https://mi.lladlam.top`。板端通过 HTTPS 连接服务端；二维码登录和
 设备同步均在独立工作线程中执行，不阻塞 LVGL 刷新和触摸输入。
 
 设备控制按 MIoT-Spec V2 的 `did/siid/piid` 构造 `set_properties`。服务端通过

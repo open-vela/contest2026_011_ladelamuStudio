@@ -12,7 +12,7 @@ MODULE    = $(CONFIG_D13X_HOME_PANEL)
 CFLAGS += -I$(APPDIR)/industry/d13x_home_panel/ui
 
 MAINSRC = home_panel_main.c
-CSRCS   = home_panel_mijia_client.c home_panel_mijia_model.c \
+CSRCS   = home_panel_https.c home_panel_mijia_client.c home_panel_mijia_model.c \
 	  home_panel_proactive.c \
 	  home_panel_proactive_controller.c \
 	  ui/home_ui_theme.c \

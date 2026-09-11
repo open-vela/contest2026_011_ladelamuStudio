@@ -21,6 +21,7 @@
 
 #include "home_panel_mijia_client.h"
 #include "home_panel_mijia_model.h"
+#include "home_panel_https.h"
 
 #define MIJIA_HTTP_BUFFER_SIZE       1024
 #define MIJIA_JSON_BUFFER_SIZE       2048
@@ -172,6 +173,12 @@ static struct mijia_client_s g_mijia =
   .lock = PTHREAD_MUTEX_INITIALIZER,
   .condition = PTHREAD_COND_INITIALIZER,
 };
+
+static void mijia_webclient_set_defaults(struct webclient_context *context)
+{
+  webclient_set_defaults(context);
+  home_panel_https_configure(context);
+}
 static uint8_t g_mijia_qr_data[MIJIA_QR_DATA_SIZE];
 
 static bool mijia_board_proposal_id_valid(const char *value);
@@ -271,7 +278,7 @@ static int mijia_http_request(const char *method, const char *path,
   response.capacity = response_capacity;
   response_data[0] = '\0';
 
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = method;
   context.url = url;
   context.buffer = buffer;
@@ -347,7 +354,7 @@ static int mijia_authorized_post(const char *token, const char *path,
   response.capacity = response_capacity;
   response_data[0] = '\0';
 
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "POST";
   context.url = url;
   context.buffer = buffer;
@@ -399,7 +406,7 @@ static int mijia_authorized_get(const char *token, const char *path,
   response.data = response_data;
   response.capacity = response_capacity;
   response_data[0] = '\0';
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "GET";
   context.url = url;
   context.buffer = buffer;
@@ -600,7 +607,7 @@ static int mijia_download_login_qr(const char *session_id,
   memset(&sink, 0, sizeof(sink));
   sink.data = (char *)wire_data;
   sink.capacity = MIJIA_QR_WIRE_SIZE;
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "GET";
   context.url = url;
   context.buffer = http_buffer;
@@ -854,7 +861,7 @@ static int mijia_set_vault_password(const char *token,
   sink.data = response;
   sink.capacity = sizeof(response);
   response[0] = '\0';
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "POST";
   context.url = url;
   context.buffer = buffer;
@@ -1041,7 +1048,7 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   sink.capacity = CONFIG_D13X_HOME_PANEL_MIJIA_MAX_RESPONSE;
   response[0] = '\0';
 
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "GET";
   context.url = url;
   context.buffer = buffer;
@@ -1221,7 +1228,7 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   sink.capacity = MIJIA_DELTA_RESPONSE_SIZE;
   response[0] = '\0';
 
-  webclient_set_defaults(&context);
+  mijia_webclient_set_defaults(&context);
   context.method = "GET";
   context.url = url;
   context.buffer = buffer;
