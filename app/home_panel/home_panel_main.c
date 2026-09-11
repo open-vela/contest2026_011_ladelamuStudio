@@ -198,6 +198,7 @@ enum network_state_e
 #define make_info_row             home_ui_make_info_row
 #define action_clicked            home_ui_action_clicked
 #define control_display_name      home_ui_control_display_name
+#define option_display_name       home_ui_option_display_name
 #define format_control_value      home_ui_format_control_value
 #define set_command_status        home_ui_set_command_status
 #define format_device_value       home_ui_format_device_value
@@ -1975,6 +1976,7 @@ static void update_device_binding(
 {
   const struct home_panel_device_s *device = binding->device;
   bool checked;
+  bool visual_changed;
   bool current_checked;
   bool disabled;
   bool state_text_changed;
@@ -1987,12 +1989,18 @@ static void update_device_binding(
     }
 
   checked = device->has_power && device->power;
+  visual_changed = !binding->visual_initialized ||
+                   binding->visual_online != device->online ||
+                   binding->visual_power != checked;
+  binding->visual_initialized = true;
+  binding->visual_online = device->online;
+  binding->visual_power = checked;
   format_device_value(device, value, sizeof(value));
   set_label_text_if_changed(binding->value_label, value);
   state_text_changed = set_label_text_if_changed(
     binding->state_label, device_state_text(device));
 
-  if (binding->card != NULL)
+  if (binding->card != NULL && visual_changed)
     {
       theme_apply_card_state(
         binding->card,
@@ -2083,8 +2091,11 @@ static void update_control_binding(
     {
       if (!lv_obj_has_state(binding->control, LV_STATE_PRESSED))
         {
-          lv_slider_set_value(binding->control, property->value,
-                              LV_ANIM_OFF);
+          if (lv_slider_get_value(binding->control) != property->value)
+            {
+              lv_slider_set_value(binding->control, property->value,
+                                  LV_ANIM_OFF);
+            }
           format_control_value(property, property->value,
                                value, sizeof(value));
           set_label_text_if_changed(binding->value_label,
@@ -2106,11 +2117,15 @@ static void update_control_binding(
         }
       if (!lv_obj_has_state(binding->control, LV_STATE_PRESSED))
         {
-          lv_dropdown_set_selected(binding->control, selected);
+          if (lv_dropdown_get_selected(binding->control) != selected)
+            {
+              lv_dropdown_set_selected(binding->control, selected);
+            }
           set_label_text_if_changed(
             binding->value_label,
             property->option_count > 0 ?
-              property->options[selected].label : "--");
+              option_display_name(property->name,
+                                  property->options[selected].label) : "--");
         }
     }
 
