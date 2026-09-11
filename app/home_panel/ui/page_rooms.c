@@ -72,7 +72,9 @@ static void room_device_clicked(lv_event_t *event)
     }
 }
 
-static void make_room_device_summary(lv_obj_t *parent, int x, int y,
+static void make_room_device_summary(lv_obj_t *parent,
+                                     unsigned int column,
+                                     unsigned int row,
                                      const struct home_panel_device_s *device,
                                      unsigned int device_index,
                                      lv_color_t accent)
@@ -87,8 +89,9 @@ static void make_room_device_summary(lv_obj_t *parent, int x, int y,
 
   card = lv_button_create(parent);
   home_ui_configure_fast_button(card);
-  lv_obj_set_pos(card, x, y);
-  lv_obj_set_size(card, ROOM_CARD_WIDTH, ROOM_CARD_HEIGHT);
+  lv_obj_set_height(card, ROOM_CARD_HEIGHT);
+  lv_obj_set_grid_cell(card, LV_GRID_ALIGN_STRETCH, column, 1,
+                       LV_GRID_ALIGN_START, row, 1);
   lv_obj_set_style_radius(card, THEME_RADIUS_CARD, 0);
   lv_obj_set_style_shadow_width(card, 0, 0);
   lv_obj_set_style_bg_color(card, lv_color_hex(COLOR_SURFACE), 0);
@@ -114,13 +117,15 @@ static void make_room_device_summary(lv_obj_t *parent, int x, int y,
 
   label = home_ui_make_label(card, device->name, 44, 10,
                      lv_color_hex(COLOR_TEXT), home_panel_font_get());
-  lv_obj_set_width(label, ROOM_CARD_WIDTH - 72);
+  lv_obj_set_width(label, 128);
   lv_label_set_long_mode(label, LV_LABEL_LONG_DOT);
 
   /* Arrow indicator */
 
-  home_ui_make_label(card, LV_SYMBOL_RIGHT, ROOM_CARD_WIDTH - 28, 10,
-             lv_color_hex(COLOR_MUTED), &lv_font_montserrat_16);
+  label = home_ui_make_label(card, LV_SYMBOL_RIGHT, 0, 10,
+                             lv_color_hex(COLOR_MUTED),
+                             &lv_font_montserrat_16);
+  lv_obj_align(label, LV_ALIGN_TOP_RIGHT, -12, 0);
 
   /* Key value */
 
@@ -522,6 +527,15 @@ static void show_room_device_detail(unsigned int device_index)
 
 static lv_obj_t *create_room_device_view(unsigned int room_index)
 {
+  static const int32_t grid_columns[] =
+  {
+    LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST
+  };
+  static const int32_t grid_rows[] =
+  {
+    ROOM_CARD_HEIGHT, ROOM_CARD_HEIGHT, ROOM_CARD_HEIGHT, ROOM_CARD_HEIGHT,
+    ROOM_CARD_HEIGHT, ROOM_CARD_HEIGHT, LV_GRID_TEMPLATE_LAST
+  };
   static const uint32_t colors[] =
   {
     COLOR_ORANGE, COLOR_BLUE, COLOR_GREEN
@@ -542,6 +556,11 @@ static lv_obj_t *create_room_device_view(unsigned int room_index)
       return NULL;
     }
 
+  lv_obj_set_layout(host, LV_LAYOUT_GRID);
+  lv_obj_set_grid_dsc_array(host, grid_columns, grid_rows);
+  lv_obj_set_style_pad_column(host, THEME_CARD_GAP, 0);
+  lv_obj_set_style_pad_row(host, 12, 0);
+
   room = &g_ui.family_model->rooms[room_index];
   for (device_index = 0;
        device_index < g_ui.family_model->device_count;
@@ -557,11 +576,10 @@ static lv_obj_t *create_room_device_view(unsigned int room_index)
           continue;
         }
 
-      column = visible % 2;
-      row = visible / 2;
+      column = visible % 3;
+      row = visible / 3;
       make_room_device_summary(
-        host, (int)column * (ROOM_CARD_WIDTH + ROOM_CARD_GAP),
-        (int)row * 120, device, device_index,
+        host, column, row, device, device_index,
         lv_color_hex(colors[visible % 3]));
       visible++;
     }

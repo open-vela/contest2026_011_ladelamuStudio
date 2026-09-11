@@ -4,11 +4,15 @@
 
 #include <nuttx/config.h>
 #include <nuttx/arch.h>
+#include <nuttx/irq.h>
+#include <nuttx/semaphore.h>
+#include <nuttx/spinlock.h>
 
 #include <errno.h>
 
 #include "chip.h"
 #include "artinchip_de.h"
+#include "include/irq.h"
 
 #define BIT(n)                    (1u << (n))
 
@@ -47,6 +51,36 @@
 #define MOD_RESET_DEASSERT        BIT(13)
 #define MOD_BUS_ENABLE            BIT(12)
 #define MOD_CLOCK_ENABLE          BIT(8)
+#define TIMING_V_BLANK_IRQ        BIT(0)
+
+#ifdef CONFIG_FB_SYNC
+static sem_t g_de_vsync_sem;
+static bool g_de_vsync_initialized;
+static volatile bool g_de_vsync_waiting;
+static volatile uint32_t g_de_vsync_sequence;
+
+static int d13x_de_interrupt(int irq, void *context, void *arg)
+{
+  uint32_t status;
+
+  (void)irq;
+  (void)context;
+  (void)arg;
+
+  status = getreg32(D13X_DE_BASE + TIMING_STATUS);
+  putreg32(status, D13X_DE_BASE + TIMING_STATUS);
+  if ((status & TIMING_V_BLANK_IRQ) != 0)
+    {
+      g_de_vsync_sequence++;
+      if (g_de_vsync_waiting)
+        {
+          nxsem_post(&g_de_vsync_sem);
+        }
+    }
+
+  return OK;
+}
+#endif
 
 static inline void de_write(uint32_t offset, uint32_t value)
 {
@@ -85,6 +119,20 @@ int d13x_de_initialize(uint32_t width, uint32_t height,
   de_write(TIMING_INIT, 0);
   de_write(TIMING_STATUS, 0xffffffffu);
 
+#ifdef CONFIG_FB_SYNC
+  if (!g_de_vsync_initialized)
+    {
+      nxsem_init(&g_de_vsync_sem, 0, 0);
+      if (irq_attach(D13X_IRQ_DE, d13x_de_interrupt, NULL) < 0)
+        {
+          nxsem_destroy(&g_de_vsync_sem);
+          return -EIO;
+        }
+
+      g_de_vsync_initialized = true;
+    }
+#endif
+
   de_write(TIMING_ACTIVE_SIZE, de_size(width, height));
   de_write(TIMING_H_PORCH, ((hbp & 0x1fffu) << 16) |
                             (hfp & 0x1fffu));
@@ -94,6 +142,11 @@ int d13x_de_initialize(uint32_t width, uint32_t height,
                                (hsync & 0x7ffu));
   de_write(TIMING_POLARITY, 0);
   de_write(TIMING_LINE_SET, 2u << 16);
+#ifdef CONFIG_FB_SYNC
+  de_write(TIMING_INIT, TIMING_V_BLANK_IRQ);
+#else
+  de_write(TIMING_INIT, 0);
+#endif
 
   de_write(BLENDING_BG_COLOR, 0);
   de_write(BLENDING_OUTPUT_SIZE, de_size(width, height));
@@ -115,6 +168,9 @@ int d13x_de_initialize(uint32_t width, uint32_t height,
                    (0xdu << 12) | 0x40u);
   de_write(QOS_URGENT, BIT(15) | BIT(14) | 0x40u);
   de_write(DE_CONFIG_UPDATE, BIT(0));
+#ifdef CONFIG_FB_SYNC
+  up_enable_irq(D13X_IRQ_DE);
+#endif
   return OK;
 }
 
@@ -137,3 +193,60 @@ void d13x_de_disable(void)
   de_write(TIMING_CTRL, reg & ~TIMING_ENABLE);
   de_write(DE_CONFIG_UPDATE, BIT(0));
 }
+
+#ifdef CONFIG_FB_SYNC
+int d13x_de_wait_for_vsync(void)
+{
+  irqstate_t flags;
+  uint32_t target;
+  int ret;
+
+  if (!g_de_vsync_initialized)
+    {
+      return -ENODEV;
+    }
+
+  flags = enter_critical_section();
+  target = g_de_vsync_sequence + 1;
+  while (nxsem_trywait(&g_de_vsync_sem) == OK)
+    {
+    }
+
+  g_de_vsync_waiting = true;
+  leave_critical_section(flags);
+
+  do
+    {
+      if (g_de_vsync_sequence >= target)
+        {
+          ret = OK;
+          break;
+        }
+
+      ret = nxsem_tickwait_uninterruptible(&g_de_vsync_sem,
+                                           MSEC2TICK(100));
+    }
+  while (ret == OK);
+
+  flags = enter_critical_section();
+  g_de_vsync_waiting = false;
+  while (nxsem_trywait(&g_de_vsync_sem) == OK)
+    {
+    }
+  leave_critical_section(flags);
+
+  return ret;
+}
+
+void d13x_de_uninitialize_vsync(void)
+{
+  if (g_de_vsync_initialized)
+    {
+      up_disable_irq(D13X_IRQ_DE);
+      irq_detach(D13X_IRQ_DE);
+      nxsem_destroy(&g_de_vsync_sem);
+      g_de_vsync_initialized = false;
+      g_de_vsync_waiting = false;
+    }
+}
+#endif

@@ -331,11 +331,20 @@ static void update_time_ui(bool force)
            weekdays[local_time.tm_wday]);
   if (g_clock_label != NULL)
     {
-      set_label_text_if_changed(g_clock_label, clock_text);
+      if (set_label_text_if_changed(g_clock_label, clock_text))
+        {
+          /* Keep the top-bar slot stable so a shorter time never leaves
+           * stale glyphs outside the new label bounds during a local flush.
+           */
+          lv_obj_invalidate(g_clock_label);
+        }
     }
   if (g_date_label != NULL)
     {
-      set_label_text_if_changed(g_date_label, date_text);
+      if (set_label_text_if_changed(g_date_label, date_text))
+        {
+          lv_obj_invalidate(g_date_label);
+        }
     }
 }
 
@@ -1656,19 +1665,13 @@ static void show_page(unsigned int page)
   struct home_panel_mijia_snapshot_s snapshot;
   bool creating;
   unsigned int previous_page;
+  uint32_t visible_mask;
   uint32_t started = lv_tick_get();
 
   if (page >= HOME_PAGE_COUNT)
     {
       page = 0;
     }
-
-  /* Hiding a cached page only invalidates the regions LVGL considers dirty.
-   * The D13x framebuffer retains untouched pixels, so defer one full-screen
-   * refresh until the current input/timer callback has returned.
-   */
-
-  g_full_refresh_pending = true;
 
   if (g_pages[page] != NULL &&
       g_page_model_revisions[page] != g_family_ui_revision)
@@ -1690,7 +1693,7 @@ static void show_page(unsigned int page)
       set_nav_selected(page, true);
     }
 
-  select_visible_page(page);
+  visible_mask = select_visible_page(page);
 
   if (!creating)
     {
@@ -1712,7 +1715,7 @@ static void show_page(unsigned int page)
       syslog(LOG_INFO,
              "[HOME][UI] page-switch page=%u model=%u visible=%02lx\n",
              page, (unsigned int)g_family_model.revision,
-             (unsigned long)select_visible_page(page));
+             (unsigned long)visible_mask);
       if (lv_tick_elaps(started) >= UI_SLOW_LOG_MS)
         {
           syslog(LOG_WARNING,
@@ -1730,7 +1733,7 @@ static void show_page(unsigned int page)
   theme_apply_page_atmosphere(g_pages[page], page);
   lv_obj_clear_flag(g_pages[page], LV_OBJ_FLAG_SCROLLABLE);
   theme_create_ambient_mask(g_pages[page], page);
-  select_visible_page(page);
+  visible_mask = select_visible_page(page);
   g_content = g_pages[page];
   g_device_binding_counts[page] = 0;
   memset(g_device_bindings[page], 0, sizeof(g_device_bindings[page]));
@@ -1789,7 +1792,7 @@ static void show_page(unsigned int page)
   syslog(LOG_INFO,
          "[HOME][UI] page-render end page=%u model=%u visible=%02lx\n",
          page, (unsigned int)g_family_model.revision,
-         (unsigned long)select_visible_page(page));
+         (unsigned long)visible_mask);
   if (lv_tick_elaps(started) >= UI_SLOW_LOG_MS)
     {
       syslog(LOG_WARNING,
@@ -2584,6 +2587,9 @@ static void create_home_screen(void)
 
   g_clock_label = lv_label_create(topbar);
   lv_label_set_text(g_clock_label, "--:--");
+  lv_obj_set_width(g_clock_label, 78);
+  lv_obj_set_height(g_clock_label, 40);
+  lv_label_set_long_mode(g_clock_label, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_font(g_clock_label, &home_panel_digits_28, 0);
   lv_obj_set_style_text_color(g_clock_label, lv_color_hex(COLOR_TEXT), 0);
 
@@ -2591,6 +2597,9 @@ static void create_home_screen(void)
 
   g_date_label = lv_label_create(topbar);
   lv_label_set_text(g_date_label, "等待网络校时");
+  lv_obj_set_width(g_date_label, 190);
+  lv_obj_set_height(g_date_label, 40);
+  lv_label_set_long_mode(g_date_label, LV_LABEL_LONG_CLIP);
   lv_obj_set_style_text_font(g_date_label, home_panel_font_get(), 0);
   lv_obj_set_style_text_color(g_date_label, lv_color_hex(COLOR_MUTED), 0);
   lv_obj_set_style_pad_left(g_date_label, 12, 0);
@@ -2956,19 +2965,6 @@ int main(int argc, char *argv[])
         uint32_t refresh_elapsed;
 
         delay = lv_timer_handler();
-        if (g_full_refresh_pending)
-          {
-            uint32_t full_refresh_started = lv_tick_get();
-
-            g_full_refresh_pending = false;
-            lv_obj_invalidate(lv_screen_active());
-            lv_refr_now(result.disp);
-            syslog(LOG_INFO,
-                   "[HOME][UI] full-refresh page=%u elapsed=%ums\n",
-                   g_current_page,
-                   (unsigned int)lv_tick_elaps(full_refresh_started));
-            delay = 1;
-          }
         refresh_elapsed = lv_tick_elaps(refresh_started);
         if (refresh_elapsed >= UI_SLOW_LOG_MS &&
             (last_slow_refresh_log == 0 ||

@@ -1,0 +1,24 @@
+diff --git a/src/drivers/nuttx/lv_nuttx_fbdev.c b/src/drivers/nuttx/lv_nuttx_fbdev.c
+--- a/src/drivers/nuttx/lv_nuttx_fbdev.c
++++ b/src/drivers/nuttx/lv_nuttx_fbdev.c
+@@ -165,7 +165,9 @@ int lv_nuttx_fbdev_set_file(lv_display_t * disp, const char * file)
+     }
+ 
+     lv_display_set_color_format(disp, color_format);
+-    lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_DIRECT);
++    /* Each framebuffer is a complete physical page.  Redraw the whole page
++     * before a pan so removed glyphs cannot survive in the next page. */
++    lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_FULL);
+     lv_display_set_resolution(disp, dsc->vinfo.xres, dsc->vinfo.yres);
+     lv_timer_set_cb(disp->refr_timer, display_refr_timer_cb);
+ 
+@@ -265,6 +267,10 @@ static void flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * color_p)
+         if(ioctl(dsc->fd, FBIOPAN_DISPLAY, (unsigned long)((uintptr_t) & (dsc->pinfo))) < 0) {
+             LV_LOG_ERROR("ioctl(FBIOPAN_DISPLAY) failed: %d", errno);
+         }
++#if defined(CONFIG_FB_SYNC)
++        if(ioctl(dsc->fd, FBIO_WAITFORVSYNC, 0) < 0) {
++            LV_LOG_ERROR("ioctl(FBIO_WAITFORVSYNC) failed: %d", errno);
++        }
++#endif
+     }

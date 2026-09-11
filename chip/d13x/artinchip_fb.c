@@ -7,7 +7,6 @@
 #include <nuttx/cache.h>
 #include <nuttx/kmalloc.h>
 #include <nuttx/video/fb.h>
-#include <nuttx/wdog.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -34,11 +33,9 @@ struct d13x_fb_state_s
   bool initialized;
   bool power_on;
   uint8_t *memory;
-  struct wdog_s pan_wdog;
 };
 
 static struct d13x_fb_state_s g_fb;
-static void d13x_fb_pan_complete(wdparm_t arg);
 
 static void d13x_fb_clean_cache(void)
 {
@@ -153,50 +150,6 @@ static int d13x_fb_getplaneinfo(struct fb_vtable_s *vtable, int planeno,
   return OK;
 }
 
-#ifdef CONFIG_FB_UPDATE
-static int d13x_fb_updatearea(struct fb_vtable_s *vtable,
-                              const struct fb_area_s *area)
-{
-  uint32_t x;
-  uint32_t y;
-  uint32_t width;
-  uint32_t height;
-  uintptr_t address;
-
-  (void)vtable;
-
-  if (area == NULL || !g_fb.initialized || area->w == 0 || area->h == 0)
-    {
-      return -EINVAL;
-    }
-
-  x = area->x;
-  y = area->y;
-  width = area->w;
-  height = area->h;
-  if (x >= D13X_FB_WIDTH || y >= D13X_FB_HEIGHT * D13X_FB_BUFFERS)
-    {
-      return -EINVAL;
-    }
-
-  if (width > D13X_FB_WIDTH - x)
-    {
-      width = D13X_FB_WIDTH - x;
-    }
-
-  if (height > D13X_FB_HEIGHT * D13X_FB_BUFFERS - y)
-    {
-      height = D13X_FB_HEIGHT * D13X_FB_BUFFERS - y;
-    }
-
-  address = (uintptr_t)g_fb.memory + y * D13X_FB_STRIDE + x * 2u;
-
-  d13x_fb_clean_cache_area((const void *)address, width * 2u,
-                           D13X_FB_STRIDE, height);
-  return OK;
-}
-#endif
-
 static int d13x_fb_pandisplay(struct fb_vtable_s *vtable,
                               struct fb_planeinfo_s *pinfo)
 {
@@ -212,29 +165,29 @@ static int d13x_fb_pandisplay(struct fb_vtable_s *vtable,
 
   address = (uintptr_t)g_fb.memory + pinfo->yoffset * D13X_FB_STRIDE;
 
-  /* LVGL uses DIRECT double buffering.  Before drawing a new dirty area it
-   * copies the previous frame's dirty areas into the back buffer so both
-   * framebuffers remain identical.  FBIO_UPDATE only describes the current
-   * dirty area and therefore does not cover those synchronization copies.
-   * Cleaning just that area can leave stale cache lines in the back buffer,
-   * which appear as old labels and widgets after the subsequent page flip.
-   *
-   * Clean the complete (finite) data cache immediately before publishing the
-   * buffer.  This makes every LVGL write visible to the DE DMA master.  It is
-   * also cheaper than walking the entire 1.2 MiB framebuffer line by line.
+  /* Both LVGL draw buffers are complete physical framebuffer pages and LVGL
+   * redraws the full page before publishing it.  Clean the complete cache so
+   * all framebuffer writes are visible to the DE DMA master.
    */
 
   d13x_fb_clean_cache();
   d13x_de_set_framebuffer(address);
-
-  /* The DE switches buffers immediately and this port has no VSYNC IRQ.
-   * Release the queued frame after FBIOPAN_DISPLAY has added it, otherwise
-   * LVGL stops refreshing when both framebuffer slots are queued.
-   */
-
-  wd_start(&g_fb.pan_wdog, 1, d13x_fb_pan_complete, 0);
   return OK;
 }
+
+#ifdef CONFIG_FB_SYNC
+static int d13x_fb_waitforvsync(struct fb_vtable_s *vtable)
+{
+  int ret;
+
+  ret = d13x_de_wait_for_vsync();
+
+  /* Release the queued page after its frame boundary. */
+  fb_remove_paninfo(vtable, FB_NO_OVERLAY);
+
+  return ret;
+}
+#endif
 
 static int d13x_fb_getpower(struct fb_vtable_s *vtable)
 {
@@ -273,22 +226,13 @@ static struct fb_vtable_s g_fb_vtable =
 {
   .getvideoinfo = d13x_fb_getvideoinfo,
   .getplaneinfo = d13x_fb_getplaneinfo,
-#ifdef CONFIG_FB_UPDATE
-  .updatearea = d13x_fb_updatearea,
-#endif
   .pandisplay = d13x_fb_pandisplay,
+#ifdef CONFIG_FB_SYNC
+  .waitforvsync = d13x_fb_waitforvsync,
+#endif
   .getpower = d13x_fb_getpower,
   .setpower = d13x_fb_setpower,
 };
-
-static void d13x_fb_pan_complete(wdparm_t arg)
-{
-  (void)arg;
-
-  while (fb_remove_paninfo(&g_fb_vtable, FB_NO_OVERLAY) == OK)
-    {
-    }
-}
 
 int up_fbinitialize(int display)
 {
@@ -358,7 +302,9 @@ errout:
   d13x_panel_disable();
   d13x_de_disable();
   d13x_lvds_disable();
-  wd_cancel(&g_fb.pan_wdog);
+#ifdef CONFIG_FB_SYNC
+  d13x_de_uninitialize_vsync();
+#endif
   kmm_free(g_fb.memory);
   memset(&g_fb, 0, sizeof(g_fb));
   return ret;
@@ -384,7 +330,9 @@ void up_fbuninitialize(int display)
   d13x_panel_disable();
   d13x_de_disable();
   d13x_lvds_disable();
-  wd_cancel(&g_fb.pan_wdog);
+#ifdef CONFIG_FB_SYNC
+  d13x_de_uninitialize_vsync();
+#endif
   kmm_free(g_fb.memory);
   memset(&g_fb, 0, sizeof(g_fb));
 }

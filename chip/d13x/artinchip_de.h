@@ -15,5 +15,9 @@ int d13x_de_initialize(uint32_t width, uint32_t height,
 void d13x_de_set_framebuffer(uintptr_t address);
 void d13x_de_enable(void);
 void d13x_de_disable(void);
+#ifdef CONFIG_FB_SYNC
+int d13x_de_wait_for_vsync(void);
+void d13x_de_uninitialize_vsync(void);
+#endif
 
 #endif

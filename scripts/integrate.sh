@@ -47,6 +47,12 @@ if ! grep -q 'CONFIG_LV_MEM_SIZE_KILOBYTES' \
     < "$REPO_ROOT/patches/lvgl-9.2.1-nuttx-memory-kconfig.patch"
 fi
 
+if ! grep -q 'lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_FULL)' \
+  "$LVGL_DIR/lvgl/src/drivers/nuttx/lv_nuttx_fbdev.c"; then
+  patch -d "$LVGL_DIR/lvgl" -p1 \
+    < "$REPO_ROOT/patches/lvgl-9.2.1-nuttx-vsync.patch"
+fi
+
 # Match the LVGL wrapper target convention so make does not unpack the
 # archive again and overwrite the NuttX compatibility patch.
 touch "$LVGL_DIR/lvgl"
