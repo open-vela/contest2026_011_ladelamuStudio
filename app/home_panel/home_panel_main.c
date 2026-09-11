@@ -2826,6 +2826,26 @@ int main(int argc, char *argv[])
     {
       uint32_t delay;
 
+      /* Service input and pending invalidation before background polling.  A
+       * cloud or proactive request may take longer than one UI frame; doing
+       * this at the end of the loop makes a tap wait behind that work. */
+      {
+        uint32_t refresh_started = lv_tick_get();
+        uint32_t refresh_elapsed;
+
+        delay = lv_timer_handler();
+        refresh_elapsed = lv_tick_elaps(refresh_started);
+        if (refresh_elapsed >= UI_SLOW_LOG_MS &&
+            (last_slow_refresh_log == 0 ||
+             lv_tick_elaps(last_slow_refresh_log) >= 1000))
+          {
+            last_slow_refresh_log = lv_tick_get();
+            syslog(LOG_WARNING,
+                   "[HOME][PERF] lv-refresh page=%u elapsed=%ums\n",
+                   g_current_page, (unsigned int)refresh_elapsed);
+          }
+      }
+
       if (displayed_state != g_network_state)
         {
           displayed_state = g_network_state;
@@ -2963,22 +2983,6 @@ int main(int argc, char *argv[])
           show_page(g_current_page);
         }
 
-      {
-        uint32_t refresh_started = lv_tick_get();
-        uint32_t refresh_elapsed;
-
-        delay = lv_timer_handler();
-        refresh_elapsed = lv_tick_elaps(refresh_started);
-        if (refresh_elapsed >= UI_SLOW_LOG_MS &&
-            (last_slow_refresh_log == 0 ||
-             lv_tick_elaps(last_slow_refresh_log) >= 1000))
-          {
-            last_slow_refresh_log = lv_tick_get();
-            syslog(LOG_WARNING,
-                   "[HOME][PERF] lv-refresh page=%u elapsed=%ums\n",
-                   g_current_page, (unsigned int)refresh_elapsed);
-          }
-      }
       if (delay == LV_NO_TIMER_READY || delay > UI_LOOP_MAX_DELAY_MS)
         {
           delay = UI_LOOP_MAX_DELAY_MS;
