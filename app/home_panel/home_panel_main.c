@@ -2800,6 +2800,9 @@ int main(int argc, char *argv[])
       return 1;
     }
 
+  /* Poll touch input faster than the display refresh timer so short taps and
+   * scroll gestures do not wait for the default 10 ms input sample. */
+  lv_timer_set_period(lv_indev_get_read_timer(result.indev), 5);
   lv_indev_set_display(result.indev, result.disp);
 
   create_home_screen();
