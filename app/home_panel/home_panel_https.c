@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
 
 #include <mbedtls/ctr_drbg.h>
 #include <mbedtls/entropy.h>
@@ -52,7 +53,7 @@ static const char g_gts_root_r1[] =
   "7HLwEXWdyzRSjeZ2axfG34arJ45JK3VmgRAhpuo+9K4l/3wV3s6MJT/KYnAK9y8J\n"
   "ZgfIPxz88NtFMN9iiMG1D53Dn0reWVlHxYciNuaCp+0KueIHoI17eko8cdLiA6Ef\n"
   "MgfdG+RCzgwARWGAtQsgWSl4vflVy2PFPEz0tv/bal8xa5meLMFrUKTX5hgUvYU/\n"
-  "Z6tGn6D/Qqc6f1zLXbBwHSs09dR2CQzreExZBfMZQsNhFRAbd03OIozUhfJFfbdT\n"
+  "Z6tGn6D/Qqc6f1zLXbBwHSs09dR2CQzreExZBfMzQsNhFRAbd03OIozUhfJFfbdT\n"
   "6u9AWpQKXCBfTkBdYiJ23//OYb2MI3jSNwLgjt7RETeJ9r/tSQdirpLsQBqvFAnZ\n"
   "0E6yove+7u7Y/9waLd64NnHi/Hm3lCXRSHNboTXns5lndcEZOitHTtNCjv0xyBZm\n"
   "2tIMPNuzjsmhDYAPexZ3FL//2wmUspO8IFgV6dtxQ/PeEMMA3KgqlbbC1j+Qa3bb\n"
@@ -88,6 +89,7 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
                               &conn->entropy, seed, strlen((const char *)seed));
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] drbg seed failed mbedtls=%d\n", ret);
       ret = -EIO;
       goto err;
     }
@@ -97,6 +99,7 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
                                sizeof(g_gts_root_r1));
   if (ret < 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] CA parse failed mbedtls=%d\n", ret);
       ret = -EIO;
       goto err;
     }
@@ -106,6 +109,7 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
                                     MBEDTLS_SSL_PRESET_DEFAULT);
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] ssl config failed mbedtls=%d\n", ret);
       ret = -EIO;
       goto err;
     }
@@ -118,6 +122,8 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
                             MBEDTLS_NET_PROTO_TCP);
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] TCP connect failed host=%s mbedtls=%d\n",
+             hostname, ret);
       ret = -EHOSTUNREACH;
       goto err;
     }
@@ -125,6 +131,7 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
   ret = mbedtls_ssl_setup(&conn->ssl, &conn->config);
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] ssl setup failed mbedtls=%d\n", ret);
       ret = -EIO;
       goto err;
     }
@@ -132,6 +139,7 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
   ret = mbedtls_ssl_set_hostname(&conn->ssl, hostname);
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] SNI setup failed mbedtls=%d\n", ret);
       ret = -EINVAL;
       goto err;
     }
@@ -147,6 +155,8 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
 
   if (ret != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] handshake failed host=%s mbedtls=%d\n",
+             hostname, ret);
       ret = -EIO;
       goto err;
     }
@@ -154,6 +164,8 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
   verify = mbedtls_ssl_get_verify_result(&conn->ssl);
   if (verify != 0)
     {
+      syslog(LOG_ERR, "[HOME][HTTPS] certificate verify failed flags=%08lx\n",
+             (unsigned long)verify);
       ret = -EACCES;
       goto err;
     }
