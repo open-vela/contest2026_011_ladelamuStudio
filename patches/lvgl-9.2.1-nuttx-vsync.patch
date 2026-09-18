@@ -1,7 +1,6 @@
-diff --git a/src/drivers/nuttx/lv_nuttx_fbdev.c b/src/drivers/nuttx/lv_nuttx_fbdev.c
 --- a/src/drivers/nuttx/lv_nuttx_fbdev.c
 +++ b/src/drivers/nuttx/lv_nuttx_fbdev.c
-@@ -165,7 +165,9 @@ int lv_nuttx_fbdev_set_file(lv_display_t * disp, const char * file)
+@@ -167,7 +167,9 @@
      }
  
      lv_display_set_color_format(disp, color_format);
@@ -12,7 +11,7 @@ diff --git a/src/drivers/nuttx/lv_nuttx_fbdev.c b/src/drivers/nuttx/lv_nuttx_fbd
      lv_display_set_resolution(disp, dsc->vinfo.xres, dsc->vinfo.yres);
      lv_timer_set_cb(disp->refr_timer, display_refr_timer_cb);
  
-@@ -265,6 +267,10 @@ static void flush_cb(lv_display_t * disp, const lv_area_t * area, uint8_t * color_p)
+@@ -285,6 +287,11 @@
          if(ioctl(dsc->fd, FBIOPAN_DISPLAY, (unsigned long)((uintptr_t) & (dsc->pinfo))) < 0) {
              LV_LOG_ERROR("ioctl(FBIOPAN_DISPLAY) failed: %d", errno);
          }
@@ -22,3 +21,5 @@ diff --git a/src/drivers/nuttx/lv_nuttx_fbdev.c b/src/drivers/nuttx/lv_nuttx_fbd
 +        }
 +#endif
      }
+     lv_display_flush_ready(disp);
+ }
