@@ -231,7 +231,7 @@ LVGL BinFont 读取，不在运行时解析 TTF 或执行浮点光栅化。BinFo
 当前候选镜像 `2.2.0.1` SHA-256：
 
 ```text
-PENDING_CI_RELEASE_SHA
+60539781329732901d742025930e48ca62cf8e73bd3e181670fc65c8cf20e5fb
 ```
 
 ## 八、许可证
