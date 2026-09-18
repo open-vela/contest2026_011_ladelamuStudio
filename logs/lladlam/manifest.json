@@ -5,6 +5,238 @@
   "generator": "extract-openvela-sessions",
   "sessions": [
     {
+      "session_id": "ses_10adbf606ffe5KRBwFH5km4xPI",
+      "tool": "mimocode",
+      "started_at": "2026-06-23 15:40:40",
+      "last_event_at": "2026-06-23 15:40:40",
+      "event_count": 2,
+      "file_path": "logs/lladlam/2026-06-23/mimocode__ses_10adbf606ffe5KRBwFH5km4xPI.jsonl"
+    },
+    {
+      "session_id": "ses_10adb2868ffejCzi4xSuZVRSxU",
+      "tool": "opencode",
+      "started_at": "2026-06-23T15:41:32.978Z",
+      "last_event_at": "2026-06-23T16:04:13.831Z",
+      "event_count": 254,
+      "file_path": "logs/lladlam/2026-06-23/opencode__ses_10adb2868ffejCzi4xSuZVRSxU.jsonl"
+    },
+    {
+      "session_id": "ses_10ac300cbffeQ02VaimpYu0pjj",
+      "tool": "opencode",
+      "started_at": "2026-06-23T16:07:55.979Z",
+      "last_event_at": "2026-06-26T09:14:16.551Z",
+      "event_count": 2892,
+      "file_path": "logs/lladlam/2026-06-23/opencode__ses_10ac300cbffeQ02VaimpYu0pjj.jsonl"
+    },
+    {
+      "session_id": "ses_1073350b4ffeTCPfe1am8yu6TC",
+      "tool": "mimocode",
+      "started_at": "2026-06-24 08:43:44",
+      "last_event_at": "2026-06-24 09:36:32",
+      "event_count": 294,
+      "file_path": "logs/lladlam/2026-06-24/mimocode__ses_1073350b4ffeTCPfe1am8yu6TC.jsonl"
+    },
+    {
+      "session_id": "ses_10644bc1affe5XkDStu3fbxdjx",
+      "tool": "mimocode",
+      "started_at": "2026-06-24 13:04:20",
+      "last_event_at": "2026-07-14 14:01:54",
+      "event_count": 2624,
+      "file_path": "logs/lladlam/2026-06-24/mimocode__ses_10644bc1affe5XkDStu3fbxdjx.jsonl"
+    },
+    {
+      "session_id": "ses_0fd798a7dffelp6Jzwj1zAQZet",
+      "tool": "opencode",
+      "started_at": "2026-06-26T06:03:14.203Z",
+      "last_event_at": "2026-06-27T14:04:01.209Z",
+      "event_count": 1241,
+      "file_path": "logs/lladlam/2026-06-26/opencode__ses_0fd798a7dffelp6Jzwj1zAQZet.jsonl"
+    },
+    {
+      "session_id": "ses_0f69c978effeTtPdBM1AXrynAO",
+      "tool": "opencode",
+      "started_at": "2026-06-27T14:02:17.615Z",
+      "last_event_at": "2026-06-29T12:48:46.755Z",
+      "event_count": 1923,
+      "file_path": "logs/lladlam/2026-06-27/opencode__ses_0f69c978effeTtPdBM1AXrynAO.jsonl"
+    },
+    {
+      "session_id": "ses_0ed22c78fffeM06GTGizBuCed8",
+      "tool": "opencode",
+      "started_at": "2026-06-29T10:11:55.704Z",
+      "last_event_at": "2026-06-29T11:37:22.901Z",
+      "event_count": 475,
+      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ed22c78fffeM06GTGizBuCed8.jsonl"
+    },
+    {
+      "session_id": "ses_0eccf81faffetAOtjxWGfZU5Rf",
+      "tool": "opencode",
+      "started_at": "2026-06-29T11:42:52.959Z",
+      "last_event_at": "2026-06-29T11:56:31.305Z",
+      "event_count": 231,
+      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0eccf81faffetAOtjxWGfZU5Rf.jsonl"
+    },
+    {
+      "session_id": "ses_0ec63945fffe1UrepbVVO6M4At",
+      "tool": "opencode",
+      "started_at": "2026-06-29T13:40:46.144Z",
+      "last_event_at": "2026-06-29T14:43:16.528Z",
+      "event_count": 551,
+      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ec63945fffe1UrepbVVO6M4At.jsonl"
+    },
+    {
+      "session_id": "ses_0ec1a1fd4ffeql27SWB7VUIEiW",
+      "tool": "opencode",
+      "started_at": "2026-06-29T15:01:00.121Z",
+      "last_event_at": "2026-06-30T14:42:49.587Z",
+      "event_count": 3465,
+      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ec1a1fd4ffeql27SWB7VUIEiW.jsonl"
+    },
+    {
+      "session_id": "ses_0e8169710ffeBvo9aSM5Tjo4W4",
+      "tool": "mimocode",
+      "started_at": "2026-06-30 09:43:20",
+      "last_event_at": "2026-06-30 09:44:25",
+      "event_count": 21,
+      "file_path": "logs/lladlam/2026-06-30/mimocode__ses_0e8169710ffeBvo9aSM5Tjo4W4.jsonl"
+    },
+    {
+      "session_id": "ses_0e7e767ecffe6uRJfgc7A6verz",
+      "tool": "mimocode",
+      "started_at": "2026-06-30 10:34:52",
+      "last_event_at": "2026-06-30 14:23:00",
+      "event_count": 392,
+      "file_path": "logs/lladlam/2026-06-30/mimocode__ses_0e7e767ecffe6uRJfgc7A6verz.jsonl"
+    },
+    {
+      "session_id": "ses_0e20f6941ffe3ySrSe4Lf5GorS",
+      "tool": "opencode",
+      "started_at": "2026-07-01T13:48:54.481Z",
+      "last_event_at": "2026-07-02T16:54:15.007Z",
+      "event_count": 1985,
+      "file_path": "logs/lladlam/2026-07-01/opencode__ses_0e20f6941ffe3ySrSe4Lf5GorS.jsonl"
+    },
+    {
+      "session_id": "ses_0dbeec773ffegM1V3GacCypcLT",
+      "tool": "mimocode",
+      "started_at": "2026-07-02 18:22:16",
+      "last_event_at": "2026-07-03 07:43:23",
+      "event_count": 623,
+      "file_path": "logs/lladlam/2026-07-02/mimocode__ses_0dbeec773ffegM1V3GacCypcLT.jsonl"
+    },
+    {
+      "session_id": "ses_0dd2eb12effewSCMOjcDyCObzH",
+      "tool": "opencode",
+      "started_at": "2026-07-02T12:32:50.541Z",
+      "last_event_at": "2026-07-02T12:36:58.383Z",
+      "event_count": 45,
+      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dd2eb12effewSCMOjcDyCObzH.jsonl"
+    },
+    {
+      "session_id": "ses_0dd2eb0acffenhbrjb3dTIE0IZ",
+      "tool": "opencode",
+      "started_at": "2026-07-02T12:32:50.563000Z",
+      "last_event_at": "2026-07-02T16:05:27.700000Z",
+      "event_count": 687,
+      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dd2eb0acffenhbrjb3dTIE0IZ.jsonl"
+    },
+    {
+      "session_id": "ses_0dd2eb0bcffeiuXLRxO6lndYvU",
+      "tool": "opencode",
+      "started_at": "2026-07-02T12:32:50.684Z",
+      "last_event_at": "2026-07-02T12:41:15.018Z",
+      "event_count": 104,
+      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dd2eb0bcffeiuXLRxO6lndYvU.jsonl"
+    },
+    {
+      "session_id": "ses_0dc3e5400ffejbMmRQ7zePTb8r",
+      "tool": "opencode",
+      "started_at": "2026-07-02T16:55:22.923Z",
+      "last_event_at": "2026-07-02T18:00:59.608Z",
+      "event_count": 1291,
+      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dc3e5400ffejbMmRQ7zePTb8r.jsonl"
+    },
+    {
+      "session_id": "ses_0d78c63c2ffeNkHAiaUXB8koF7",
+      "tool": "mimocode",
+      "started_at": "2026-07-03 14:48:13",
+      "last_event_at": "2026-07-03 15:08:16",
+      "event_count": 274,
+      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d78c63c2ffeNkHAiaUXB8koF7.jsonl"
+    },
+    {
+      "session_id": "ses_0d771d7ebffeA9eA9a0D229uAU",
+      "tool": "mimocode",
+      "started_at": "2026-07-03 15:17:12",
+      "last_event_at": "2026-07-04 15:00:45",
+      "event_count": 840,
+      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d771d7ebffeA9eA9a0D229uAU.jsonl"
+    },
+    {
+      "session_id": "ses_0d7201bbbffeEWJB9ZLn0Bv02t",
+      "tool": "mimocode",
+      "started_at": "2026-07-03 16:46:29",
+      "last_event_at": "2026-07-03 16:46:29",
+      "event_count": 4,
+      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d7201bbbffeEWJB9ZLn0Bv02t.jsonl"
+    },
+    {
+      "session_id": "ses_0d74c7261ffe3NR1FciGGPq4LH",
+      "tool": "opencode",
+      "started_at": "2026-07-03T15:58:03.764Z",
+      "last_event_at": "2026-07-03T17:44:38.720Z",
+      "event_count": 1894,
+      "file_path": "logs/lladlam/2026-07-03/opencode__ses_0d74c7261ffe3NR1FciGGPq4LH.jsonl"
+    },
+    {
+      "session_id": "ses_0d6ea9bc7ffeP2ljGPevV9pvoB",
+      "tool": "opencode",
+      "started_at": "2026-07-03T17:44:55.687Z",
+      "last_event_at": "2026-07-03T18:34:08.492Z",
+      "event_count": 898,
+      "file_path": "logs/lladlam/2026-07-03/opencode__ses_0d6ea9bc7ffeP2ljGPevV9pvoB.jsonl"
+    },
+    {
+      "session_id": "ses_0d258537dffeshW4JbkTT2m3Mn",
+      "tool": "mimocode",
+      "started_at": "2026-07-04 15:03:11",
+      "last_event_at": "2026-07-04 15:13:46",
+      "event_count": 290,
+      "file_path": "logs/lladlam/2026-07-04/mimocode__ses_0d258537dffeshW4JbkTT2m3Mn.jsonl"
+    },
+    {
+      "session_id": "ses_0d24e23a4ffeQ8duXMFprm3Oxr",
+      "tool": "opencode",
+      "started_at": "2026-07-04T15:14:18.867Z",
+      "last_event_at": "2026-07-04T15:54:10.735Z",
+      "event_count": 593,
+      "file_path": "logs/lladlam/2026-07-04/opencode__ses_0d24e23a4ffeQ8duXMFprm3Oxr.jsonl"
+    },
+    {
+      "session_id": "ses_0d20d0dcfffeTvwFFtlrLBpIqi",
+      "tool": "opencode",
+      "started_at": "2026-07-04T16:25:24.365Z",
+      "last_event_at": "2026-07-08T16:01:57.794Z",
+      "event_count": 1469,
+      "file_path": "logs/lladlam/2026-07-04/opencode__ses_0d20d0dcfffeTvwFFtlrLBpIqi.jsonl"
+    },
+    {
+      "session_id": "ses_0bdaab4b5ffeth75P7e7pRUk4T",
+      "tool": "opencode",
+      "started_at": "2026-07-08T15:25:14.038000Z",
+      "last_event_at": "2026-07-08T15:25:19.025000Z",
+      "event_count": 3,
+      "file_path": "logs/lladlam/2026-07-08/opencode__ses_0bdaab4b5ffeth75P7e7pRUk4T.jsonl"
+    },
+    {
+      "session_id": "ses_0bd873020ffebL232gQSiABvNT",
+      "tool": "opencode",
+      "started_at": "2026-07-08T16:04:01.681Z",
+      "last_event_at": "2026-07-11T14:39:40.192Z",
+      "event_count": 1546,
+      "file_path": "logs/lladlam/2026-07-08/opencode__ses_0bd873020ffebL232gQSiABvNT.jsonl"
+    },
+    {
       "session_id": "27-019f5195-4fb5-72a3-a2f9-fa47f10410db",
       "tool": "codex",
       "started_at": "2026-07-11T14:29:56.884Z",
@@ -19,6 +251,22 @@
       "last_event_at": "2026-08-03T13:56:20.076Z",
       "event_count": 34706,
       "file_path": "logs/lladlam/2026-07-11/codex__39-019f5199-277a-7380-a86d-c341cbed2a3c.jsonl"
+    },
+    {
+      "session_id": "019f5199-277a-7380-a86d-c341cbed2a3c",
+      "tool": "codex",
+      "started_at": "2026-07-11T14:38:27.340Z",
+      "last_event_at": "2026-07-31T01:21:52.679Z",
+      "event_count": 15093,
+      "file_path": "logs/lladlam/2026-07-11/codex__019f5199-277a-7380-a86d-c341cbed2a3c.jsonl"
+    },
+    {
+      "session_id": "ses_0aab7e69cffe7bPFGsNSEvAsJa",
+      "tool": "mimocode",
+      "started_at": "2026-07-12 07:43:36",
+      "last_event_at": "2026-07-12 16:32:14",
+      "event_count": 664,
+      "file_path": "logs/lladlam/2026-07-12/mimocode__ses_0aab7e69cffe7bPFGsNSEvAsJa.jsonl"
     },
     {
       "session_id": "27-019f572f-0660-7a01-97a3-24305a534079",
@@ -173,411 +421,340 @@
       "file_path": "logs/lladlam/2026-07-30/codex__26-019fb35e-8f5d-7db2-bab6-1dc0bf4140ce.jsonl"
     },
     {
-      "session_id": "ses_0380c98feffeoKmo8LCBKxoVOo",
-      "tool": "mimocode",
-      "title": "项目UI重构：加载技能并参考记忆",
-      "started_at": "2026-08-03 14:07:25",
-      "last_event_at": "2026-08-03 14:15:39",
-      "event_count": 201,
-      "file_path": "logs/lladlam/2026-08-03/mimocode__ses_0380c98feffeoKmo8LCBKxoVOo.jsonl"
-    },
-    {
       "session_id": "ses_0381398d9ffexDSgNRH7DX57KD",
       "tool": "mimocode",
-      "title": "openvela AI Contest Log Collector",
       "started_at": "2026-08-03 13:59:46",
       "last_event_at": "2026-08-03 14:15:33",
       "event_count": 162,
       "file_path": "logs/lladlam/2026-08-03/mimocode__ses_0381398d9ffexDSgNRH7DX57KD.jsonl"
     },
     {
-      "session_id": "ses_0bd873020ffebL232gQSiABvNT",
-      "tool": "opencode",
-      "title": "OpenVela工作流管理器启动",
-      "started_at": "2026-07-08 16:04:01",
-      "last_event_at": "2026-07-11 14:40:12",
-      "event_count": 2820,
-      "file_path": "logs/lladlam/2026-07-08/opencode__ses_0bd873020ffebL232gQSiABvNT.jsonl"
-    },
-    {
-      "session_id": "ses_0d20d0dcfffeTvwFFtlrLBpIqi",
-      "tool": "opencode",
-      "title": "OpenVela D13x workflow manager",
-      "started_at": "2026-07-04 16:25:24",
-      "last_event_at": "2026-07-08 16:01:57",
-      "event_count": 2437,
-      "file_path": "logs/lladlam/2026-07-04/opencode__ses_0d20d0dcfffeTvwFFtlrLBpIqi.jsonl"
-    },
-    {
-      "session_id": "ses_0d24e23a4ffeQ8duXMFprm3Oxr",
-      "tool": "opencode",
-      "title": "OpenVela D13x Porting Workflow Manager",
-      "started_at": "2026-07-04 15:14:18",
-      "last_event_at": "2026-07-04 15:54:11",
-      "event_count": 990,
-      "file_path": "logs/lladlam/2026-07-04/opencode__ses_0d24e23a4ffeQ8duXMFprm3Oxr.jsonl"
-    },
-    {
-      "session_id": "ses_0d258537dffeshW4JbkTT2m3Mn",
+      "session_id": "ses_0380c98feffeoKmo8LCBKxoVOo",
       "tool": "mimocode",
-      "title": "串口连接及日志查看方法",
-      "started_at": "2026-07-04 15:03:11",
-      "last_event_at": "2026-07-04 15:13:46",
-      "event_count": 290,
-      "file_path": "logs/lladlam/2026-07-04/mimocode__ses_0d258537dffeshW4JbkTT2m3Mn.jsonl"
+      "started_at": "2026-08-03 14:07:26",
+      "last_event_at": "2026-08-03 14:15:44",
+      "event_count": 201,
+      "file_path": "logs/lladlam/2026-08-03/mimocode__ses_0380c98feffeoKmo8LCBKxoVOo.jsonl"
     },
     {
-      "session_id": "ses_0d6ea9bc7ffeP2ljGPevV9pvoB",
+      "session_id": "ses_01dc56aa0ffegY5BkbOc7qm8HK",
       "tool": "opencode",
-      "title": "OpenVela D13x Porting Workflow Manager",
-      "started_at": "2026-07-03 17:44:55",
-      "last_event_at": "2026-07-03 18:34:15",
-      "event_count": 1515,
-      "file_path": "logs/lladlam/2026-07-03/opencode__ses_0d6ea9bc7ffeP2ljGPevV9pvoB.jsonl"
-    },
-    {
-      "session_id": "ses_0d7201bbbffeEWJB9ZLn0Bv02t",
-      "tool": "mimocode",
-      "title": "New session - 2026-07-03T16:46:29.444Z",
-      "started_at": "2026-07-03 16:46:29",
-      "last_event_at": "2026-07-03 16:46:29",
-      "event_count": 4,
-      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d7201bbbffeEWJB9ZLn0Bv02t.jsonl"
-    },
-    {
-      "session_id": "ses_0d74c7261ffe3NR1FciGGPq4LH",
-      "tool": "opencode",
-      "title": "OpenVela 开发：代码审查、固件构建、移植",
-      "started_at": "2026-07-03 15:58:03",
-      "last_event_at": "2026-07-03 17:44:39",
-      "event_count": 2989,
-      "file_path": "logs/lladlam/2026-07-03/opencode__ses_0d74c7261ffe3NR1FciGGPq4LH.jsonl"
-    },
-    {
-      "session_id": "ses_0d771d7ebffeA9eA9a0D229uAU",
-      "tool": "mimocode",
-      "title": "新建工作树",
-      "started_at": "2026-07-03 15:17:12",
-      "last_event_at": "2026-07-04 15:00:45",
-      "event_count": 840,
-      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d771d7ebffeA9eA9a0D229uAU.jsonl"
-    },
-    {
-      "session_id": "ses_0d78c63c2ffeNkHAiaUXB8koF7",
-      "tool": "mimocode",
-      "title": "启动 CC-Switch AppImage",
-      "started_at": "2026-07-03 14:48:13",
-      "last_event_at": "2026-07-03 15:08:19",
-      "event_count": 274,
-      "file_path": "logs/lladlam/2026-07-03/mimocode__ses_0d78c63c2ffeNkHAiaUXB8koF7.jsonl"
-    },
-    {
-      "session_id": "ses_0dbeec773ffegM1V3GacCypcLT",
-      "tool": "mimocode",
-      "title": "串口连接",
-      "started_at": "2026-07-02 18:22:16",
-      "last_event_at": "2026-07-03 07:43:23",
-      "event_count": 623,
-      "file_path": "logs/lladlam/2026-07-02/mimocode__ses_0dbeec773ffegM1V3GacCypcLT.jsonl"
-    },
-    {
-      "session_id": "ses_0dc3e5400ffejbMmRQ7zePTb8r",
-      "tool": "opencode",
-      "title": "D13x衡山派LCD与GT911驱动移植",
-      "started_at": "2026-07-02 16:55:22",
-      "last_event_at": "2026-07-02 18:01:02",
-      "event_count": 2009,
-      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dc3e5400ffejbMmRQ7zePTb8r.jsonl"
-    },
-    {
-      "session_id": "ses_0dd2eb0bcffeiuXLRxO6lndYvU",
-      "tool": "opencode",
-      "title": "Codebase exploration for Python-to-C migration",
-      "started_at": "2026-07-02 12:32:50",
-      "last_event_at": "2026-07-02 16:11:46",
-      "event_count": 139,
-      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dd2eb0bcffeiuXLRxO6lndYvU.jsonl"
-    },
-    {
-      "session_id": "ses_0dd2eb12effewSCMOjcDyCObzH",
-      "tool": "opencode",
-      "title": "阅读OpenVela文档与luban-lite",
-      "started_at": "2026-07-02 12:32:50",
-      "last_event_at": "2026-07-02 16:11:46",
-      "event_count": 67,
-      "file_path": "logs/lladlam/2026-07-02/opencode__ses_0dd2eb12effewSCMOjcDyCObzH.jsonl"
-    },
-    {
-      "session_id": "ses_0e20f6941ffe3ySrSe4Lf5GorS",
-      "tool": "opencode",
-      "title": "OpenVela D13x and OpenVela documentation review",
-      "started_at": "2026-07-01 13:48:54",
-      "last_event_at": "2026-07-02 16:54:31",
-      "event_count": 3293,
-      "file_path": "logs/lladlam/2026-07-01/opencode__ses_0e20f6941ffe3ySrSe4Lf5GorS.jsonl"
-    },
-    {
-      "session_id": "ses_0e7e767ecffe6uRJfgc7A6verz",
-      "tool": "mimocode",
-      "title": "串口连接开发板",
-      "started_at": "2026-06-30 10:34:52",
-      "last_event_at": "2026-06-30 14:23:15",
-      "event_count": 392,
-      "file_path": "logs/lladlam/2026-06-30/mimocode__ses_0e7e767ecffe6uRJfgc7A6verz.jsonl"
-    },
-    {
-      "session_id": "ses_0e8169710ffeBvo9aSM5Tjo4W4",
-      "tool": "mimocode",
-      "title": "OpenVela文件夹7Z压缩至最小",
-      "started_at": "2026-06-30 09:43:20",
-      "last_event_at": "2026-06-30 09:44:25",
-      "event_count": 21,
-      "file_path": "logs/lladlam/2026-06-30/mimocode__ses_0e8169710ffeBvo9aSM5Tjo4W4.jsonl"
-    },
-    {
-      "session_id": "ses_0ec1a1fd4ffeql27SWB7VUIEiW",
-      "tool": "opencode",
-      "title": "OpenVela硬件系统移植学习",
-      "started_at": "2026-06-29 15:01:00",
-      "last_event_at": "2026-06-30 14:42:51",
-      "event_count": 5643,
-      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ec1a1fd4ffeql27SWB7VUIEiW.jsonl"
-    },
-    {
-      "session_id": "ses_0ec63945fffe1UrepbVVO6M4At",
-      "tool": "opencode",
-      "title": "阅读d13x-doc与docs系统移植",
-      "started_at": "2026-06-29 13:40:46",
-      "last_event_at": "2026-06-29 14:43:20",
-      "event_count": 955,
-      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ec63945fffe1UrepbVVO6M4At.jsonl"
-    },
-    {
-      "session_id": "ses_0eccf81faffetAOtjxWGfZU5Rf",
-      "tool": "opencode",
-      "title": "luban-lite用途分析",
-      "started_at": "2026-06-29 11:42:52",
-      "last_event_at": "2026-06-29 11:56:33",
-      "event_count": 339,
-      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0eccf81faffetAOtjxWGfZU5Rf.jsonl"
-    },
-    {
-      "session_id": "ses_0ed22c78fffeM06GTGizBuCed8",
-      "tool": "opencode",
-      "title": "阅读d13x-doc",
-      "started_at": "2026-06-29 10:11:55",
-      "last_event_at": "2026-06-29 11:37:38",
-      "event_count": 902,
-      "file_path": "logs/lladlam/2026-06-29/opencode__ses_0ed22c78fffeM06GTGizBuCed8.jsonl"
-    },
-    {
-      "session_id": "ses_0f69c978effeTtPdBM1AXrynAO",
-      "tool": "opencode",
-      "title": "阅读 START_HERE.md 文件",
-      "started_at": "2026-06-27 14:02:17",
-      "last_event_at": "2026-06-29 12:50:07",
-      "event_count": 3239,
-      "file_path": "logs/lladlam/2026-06-27/opencode__ses_0f69c978effeTtPdBM1AXrynAO.jsonl"
-    },
-    {
-      "session_id": "ses_0fd798a7dffelp6Jzwj1zAQZet",
-      "tool": "opencode",
-      "title": "Porting openvela to D13x RISC-V for contest",
-      "started_at": "2026-06-26 06:03:14",
-      "last_event_at": "2026-06-27 14:04:23",
-      "event_count": 2249,
-      "file_path": "logs/lladlam/2026-06-26/opencode__ses_0fd798a7dffelp6Jzwj1zAQZet.jsonl"
-    },
-    {
-      "session_id": "ses_10ac300cbffeQ02VaimpYu0pjj",
-      "tool": "opencode",
-      "title": "2026大赛D13x硬件移植文档阅读",
-      "started_at": "2026-06-23 16:07:55",
-      "last_event_at": "2026-06-26 09:14:20",
-      "event_count": 5411,
-      "file_path": "logs/lladlam/2026-06-23/opencode__ses_10ac300cbffeQ02VaimpYu0pjj.jsonl"
-    },
-    {
-      "session_id": "ses_10adb2868ffejCzi4xSuZVRSxU",
-      "tool": "opencode",
-      "title": "D13x移植任务：克隆contest_2026文件夹",
-      "started_at": "2026-06-23 15:41:32",
-      "last_event_at": "2026-06-23 17:48:41",
-      "event_count": 457,
-      "file_path": "logs/lladlam/2026-06-23/opencode__ses_10adb2868ffejCzi4xSuZVRSxU.jsonl"
-    },
-    {
-      "session_id": "ses_10adbf606ffe5KRBwFH5km4xPI",
-      "tool": "mimocode",
-      "title": "New session - 2026-06-23T15:40:40.313Z",
-      "started_at": "2026-06-23 15:40:40",
-      "last_event_at": "2026-06-23 17:48:41",
-      "event_count": 2,
-      "file_path": "logs/lladlam/2026-06-23/mimocode__ses_10adbf606ffe5KRBwFH5km4xPI.jsonl"
-    },
-    {
-      "session_id": "ses_1073350b4ffeTCPfe1am8yu6TC",
-      "tool": "mimocode",
-      "started_at": "2026-06-24 08:43:44",
-      "file_path": "logs/lladlam/2026-06-24/mimocode__ses_1073350b4ffeTCPfe1am8yu6TC.jsonl",
-      "title": "将/home/lladlam/Downloads/xI8c621w_MiMoCodeAndroid.zip解压到这个目录并编译",
-      "source": "staging-sync"
-    },
-    {
-      "session_id": "ses_10644bc1affe5XkDStu3fbxdjx",
-      "tool": "mimocode",
-      "started_at": "2026-06-24 13:04:20",
-      "file_path": "logs/lladlam/2026-06-24/mimocode__ses_10644bc1affe5XkDStu3fbxdjx.jsonl",
-      "title": "阅读这个项目，看有没有什么漏洞",
-      "source": "staging-sync"
-    },
-    {
-      "session_id": "ses_0aab7e69cffe7bPFGsNSEvAsJa",
-      "tool": "mimocode",
-      "started_at": "2026-07-12 07:43:36",
-      "file_path": "logs/lladlam/2026-07-12/mimocode__ses_0aab7e69cffe7bPFGsNSEvAsJa.jsonl",
-      "title": "看/home/lladlam/shared/AiBurn-1.5.1_Setup_2026-01-09.exe，反编译分析后查看有没有调用接口",
-      "source": "staging-sync"
-    },
-    {
-      "session_id": "019f5199-277a-7380-a86d-c341cbed2a3c",
-      "tool": "codex",
-      "started_at": "2026-07-11T14:38:27.340Z",
-      "file_path": "logs/lladlam/2026-07-11/codex__019f5199-277a-7380-a86d-c341cbed2a3c.jsonl",
-      "title": "No title",
-      "source": "staging-sync"
-    },
-    {
-      "session_id": "ses_fec89c563ffeL3JnNH7gFHHfp9",
-      "tool": "opencode",
-      "started_at": "2026-08-18T14:01:50.492000",
-      "last_event_at": "2026-08-18T15:01:46.781000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-18/opencode__ses_fec89c563ffeL3JnNH7gFHHfp9.jsonl",
-      "title": "AI日志存放位置扫描",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"mimo-v2.5-free\",\"providerID\":\"opencode\",\"variant\":\"default\"}"
-    },
-    {
-      "session_id": "ses_fee9d3e5fffeaEZ9bgg7Vdo0ub",
-      "tool": "opencode",
-      "started_at": "2026-08-18T04:21:19.904000",
-      "last_event_at": "2026-08-18T04:25:23.698000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-18/opencode__ses_fee9d3e5fffeaEZ9bgg7Vdo0ub.jsonl",
-      "title": "Find player UI layout code (@explore subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"mimo-v2.5\",\"providerID\":\"opencode-go\",\"variant\":\"default\"}"
-    },
-    {
-      "session_id": "ses_ff3019203ffeyuyigc61CA2EWu",
-      "tool": "opencode",
-      "started_at": "2026-08-17T07:53:16.028000",
-      "last_event_at": "2026-08-17T07:57:35.613000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-17/opencode__ses_ff3019203ffeyuyigc61CA2EWu.jsonl",
-      "title": "复查 mijia 最终代码 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff301a508ffehsyiVoLDPn9dux",
-      "tool": "opencode",
-      "started_at": "2026-08-17T07:53:11.159000",
-      "last_event_at": "2026-08-17T08:02:43.969000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-17/opencode__ses_ff301a508ffehsyiVoLDPn9dux.jsonl",
-      "title": "复查 UI 最终代码 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff4d974d9ffe4qms0qr81C8jen",
-      "tool": "opencode",
-      "started_at": "2026-08-16T23:17:50.502000",
-      "last_event_at": "2026-08-16T23:46:17.456000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff4d974d9ffe4qms0qr81C8jen.jsonl",
-      "title": "审查 mijia 服务端 API (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff50e6e47ffe3YGBgRQPeQjs1W",
-      "tool": "opencode",
-      "started_at": "2026-08-16T22:19:58.776000",
-      "last_event_at": "2026-08-16T22:35:59.354000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff50e6e47ffe3YGBgRQPeQjs1W.jsonl",
-      "title": "审查 mijia 服务端代码 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff50eb1cbffeNIik4JCy4o8SXY",
-      "tool": "opencode",
-      "started_at": "2026-08-16T22:19:41.492000",
-      "last_event_at": "2026-08-16T23:17:12.002000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff50eb1cbffeNIik4JCy4o8SXY.jsonl",
-      "title": "审查 D13x UI 应用代码 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff548c291ffeb67iI2NQNAWDLf",
-      "tool": "opencode",
-      "started_at": "2026-08-16T21:16:16.110000",
-      "last_event_at": "2026-08-16T21:22:03.926000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff548c291ffeb67iI2NQNAWDLf.jsonl",
-      "title": "审查网络/持久化/板级代码 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff5492f0fffe1kDzJgs0HtGLKw",
-      "tool": "opencode",
-      "started_at": "2026-08-16T21:15:48.336000",
-      "last_event_at": "2026-08-16T21:26:42.771000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff5492f0fffe1kDzJgs0HtGLKw.jsonl",
-      "title": "审查显示/触摸/I2C 驱动 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
-    },
-    {
-      "session_id": "ses_ff54a3b0cffebw7NyaCyDEPaA2",
-      "tool": "opencode",
-      "started_at": "2026-08-16T21:14:39.731000",
-      "last_event_at": "2026-08-16T22:10:45.523000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff54a3b0cffebw7NyaCyDEPaA2.jsonl",
-      "title": "审查 D13x 启动/串口/中断/定时器 (@general subagent)",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"deepseek-v4-flash\",\"providerID\":\"opencode-go\",\"variant\":\"max\"}"
+      "started_at": "2026-08-08T16:35:18.378000Z",
+      "last_event_at": "2026-08-19T06:32:51.262000Z",
+      "event_count": 1302,
+      "file_path": "logs/lladlam/2026-08-09/opencode__ses_01dc56aa0ffegY5BkbOc7qm8HK.jsonl"
     },
     {
       "session_id": "ses_ff55b7d9effeSkPoE3sFtRg59w",
       "tool": "opencode",
-      "started_at": "2026-08-16T20:55:48.577000",
-      "last_event_at": "2026-08-18T14:59:31.253000",
-      "event_count": 0,
-      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff55b7d9effeSkPoE3sFtRg59w.jsonl",
-      "title": "openvela与Codex CLI记忆查看",
-      "collection_mode": "manual",
-      "health": "ok",
-      "model": "{\"id\":\"mimo-v2.5\",\"providerID\":\"xiaomi-token-plan-cn\",\"variant\":\"default\"}"
+      "started_at": "2026-08-16T20:56:29.545000",
+      "last_event_at": "2026-08-18T14:59:31.252000",
+      "event_count": 448,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff55b7d9effeSkPoE3sFtRg59w.jsonl"
+    },
+    {
+      "session_id": "ses_ff54a3b0cffebw7NyaCyDEPaA2",
+      "tool": "opencode",
+      "started_at": "2026-08-16T21:14:39.752000",
+      "last_event_at": "2026-08-16T22:01:46.786000",
+      "event_count": 67,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff54a3b0cffebw7NyaCyDEPaA2.jsonl"
+    },
+    {
+      "session_id": "ses_ff5492f0fffe1kDzJgs0HtGLKw",
+      "tool": "opencode",
+      "started_at": "2026-08-16T21:15:48.341000",
+      "last_event_at": "2026-08-16T21:25:35.830000",
+      "event_count": 31,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff5492f0fffe1kDzJgs0HtGLKw.jsonl"
+    },
+    {
+      "session_id": "ses_ff548c291ffeb67iI2NQNAWDLf",
+      "tool": "opencode",
+      "started_at": "2026-08-16T21:16:16.116000",
+      "last_event_at": "2026-08-16T21:20:43.122000",
+      "event_count": 19,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff548c291ffeb67iI2NQNAWDLf.jsonl"
+    },
+    {
+      "session_id": "ses_ff50eb1cbffeNIik4JCy4o8SXY",
+      "tool": "opencode",
+      "started_at": "2026-08-16T22:19:41.498000",
+      "last_event_at": "2026-08-16T23:14:03.013000",
+      "event_count": 30,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff50eb1cbffeNIik4JCy4o8SXY.jsonl"
+    },
+    {
+      "session_id": "ses_ff50e6e47ffe3YGBgRQPeQjs1W",
+      "tool": "opencode",
+      "started_at": "2026-08-16T22:19:58.786000",
+      "last_event_at": "2026-08-16T22:26:04.683000",
+      "event_count": 15,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff50e6e47ffe3YGBgRQPeQjs1W.jsonl"
+    },
+    {
+      "session_id": "ses_ff4d974d9ffe4qms0qr81C8jen",
+      "tool": "opencode",
+      "started_at": "2026-08-16T23:17:50.506000",
+      "last_event_at": "2026-08-16T23:37:56.434000",
+      "event_count": 28,
+      "file_path": "logs/lladlam/2026-08-16/opencode__ses_ff4d974d9ffe4qms0qr81C8jen.jsonl"
+    },
+    {
+      "session_id": "ses_ff301a508ffehsyiVoLDPn9dux",
+      "tool": "opencode",
+      "started_at": "2026-08-17T07:53:11.275000",
+      "last_event_at": "2026-08-17T07:59:41.277000",
+      "event_count": 31,
+      "file_path": "logs/lladlam/2026-08-17/opencode__ses_ff301a508ffehsyiVoLDPn9dux.jsonl"
+    },
+    {
+      "session_id": "ses_ff3019203ffeyuyigc61CA2EWu",
+      "tool": "opencode",
+      "started_at": "2026-08-17T07:53:16.062000",
+      "last_event_at": "2026-08-17T07:55:46.188000",
+      "event_count": 27,
+      "file_path": "logs/lladlam/2026-08-17/opencode__ses_ff3019203ffeyuyigc61CA2EWu.jsonl"
+    },
+    {
+      "session_id": "ses_fec89c563ffeL3JnNH7gFHHfp9",
+      "tool": "opencode",
+      "started_at": "2026-08-18T14:01:52.870000",
+      "last_event_at": "2026-08-18T15:02:47.804000",
+      "event_count": 226,
+      "file_path": "logs/lladlam/2026-08-18/opencode__ses_fec89c563ffeL3JnNH7gFHHfp9.jsonl"
+    },
+    {
+      "session_id": "ses_fe74a25b8ffer34ncdALRAZOqW",
+      "tool": "opencode",
+      "started_at": "2026-08-19T06:29:26.259000Z",
+      "last_event_at": "2026-08-19T08:10:28.847000Z",
+      "event_count": 390,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe74a25b8ffer34ncdALRAZOqW.jsonl"
+    },
+    {
+      "session_id": "ses_fe6e92b5effey2ZNU4bWt51DiT",
+      "tool": "opencode",
+      "started_at": "2026-08-19T08:15:22.233000Z",
+      "last_event_at": "2026-08-19T08:20:00.280000Z",
+      "event_count": 3,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe6e92b5effey2ZNU4bWt51DiT.jsonl"
+    },
+    {
+      "session_id": "ses_fe6e415d9ffe1Su2hH17l1KmJc",
+      "tool": "opencode",
+      "started_at": "2026-08-19T08:20:55.030000Z",
+      "last_event_at": "2026-09-18T18:05:13.014000Z",
+      "event_count": 3340,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe6e415d9ffe1Su2hH17l1KmJc.jsonl"
+    },
+    {
+      "session_id": "ses_fe6e1699effeQVafKx52X5tLGl",
+      "tool": "opencode",
+      "started_at": "2026-08-19T08:23:50.529000Z",
+      "last_event_at": "2026-08-19T08:27:55.994000Z",
+      "event_count": 68,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe6e1699effeQVafKx52X5tLGl.jsonl"
+    },
+    {
+      "session_id": "ses_fe6e152b6ffea58FgF3qX6IaLw",
+      "tool": "opencode",
+      "started_at": "2026-08-19T08:23:56.009000Z",
+      "last_event_at": "2026-08-19T08:26:08.469000Z",
+      "event_count": 52,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe6e152b6ffea58FgF3qX6IaLw.jsonl"
+    },
+    {
+      "session_id": "ses_fe6daae83ffetYunhjQOv2YEr1",
+      "tool": "opencode",
+      "started_at": "2026-08-19T08:31:11.279000Z",
+      "last_event_at": "2026-08-20T08:02:43.452000Z",
+      "event_count": 333,
+      "file_path": "logs/lladlam/2026-08-19/opencode__ses_fe6daae83ffetYunhjQOv2YEr1.jsonl"
+    },
+    {
+      "session_id": "ses_fe1948547ffeB0aE4dtvS2PX4b",
+      "tool": "opencode",
+      "started_at": "2026-08-20T09:05:55.840000Z",
+      "last_event_at": "2026-08-20T09:06:44.436000Z",
+      "event_count": 18,
+      "file_path": "logs/lladlam/2026-08-20/opencode__ses_fe1948547ffeB0aE4dtvS2PX4b.jsonl"
+    },
+    {
+      "session_id": "ses_faed90c4affelFJhpR8ybfqVCi",
+      "tool": "opencode",
+      "started_at": "2026-08-30T05:31:43.286000Z",
+      "last_event_at": "2026-08-30T05:33:36.016000Z",
+      "event_count": 42,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_faed90c4affelFJhpR8ybfqVCi.jsonl"
+    },
+    {
+      "session_id": "ses_faed9072bffeZlMxyW7Lm618FB",
+      "tool": "opencode",
+      "started_at": "2026-08-30T05:31:43.758000Z",
+      "last_event_at": "2026-08-30T05:32:57.585000Z",
+      "event_count": 34,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_faed9072bffeZlMxyW7Lm618FB.jsonl"
+    },
+    {
+      "session_id": "ses_faec28dd3fferTCwyuNgPRJSUX",
+      "tool": "opencode",
+      "started_at": "2026-08-30T05:56:16.562000Z",
+      "last_event_at": "2026-08-30T05:58:05.694000Z",
+      "event_count": 27,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_faec28dd3fferTCwyuNgPRJSUX.jsonl"
+    },
+    {
+      "session_id": "ses_faec28c09ffedN7GbYAxo64y6g",
+      "tool": "opencode",
+      "started_at": "2026-08-30T05:56:17.023000Z",
+      "last_event_at": "2026-08-30T05:57:28.215000Z",
+      "event_count": 53,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_faec28c09ffedN7GbYAxo64y6g.jsonl"
+    },
+    {
+      "session_id": "ses_faebda227ffeMxqoyhBHCSCBAT",
+      "tool": "opencode",
+      "started_at": "2026-08-30T06:01:39.046000Z",
+      "last_event_at": "2026-08-30T06:07:16.100000Z",
+      "event_count": 25,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_faebda227ffeMxqoyhBHCSCBAT.jsonl"
+    },
+    {
+      "session_id": "ses_fae6b46dfffelPEYX3zM4yly5S",
+      "tool": "opencode",
+      "started_at": "2026-08-30T07:31:36.984000Z",
+      "last_event_at": "2026-08-30T07:32:57.269000Z",
+      "event_count": 33,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fae6b46dfffelPEYX3zM4yly5S.jsonl"
+    },
+    {
+      "session_id": "ses_fae6b3c95ffeX1L93TgJLR0Wwv",
+      "tool": "opencode",
+      "started_at": "2026-08-30T07:31:39.045000Z",
+      "last_event_at": "2026-08-30T07:33:08.418000Z",
+      "event_count": 38,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fae6b3c95ffeX1L93TgJLR0Wwv.jsonl"
+    },
+    {
+      "session_id": "ses_fae6b3b19ffeJKoV40WruU9wFP",
+      "tool": "opencode",
+      "started_at": "2026-08-30T07:31:39.375000Z",
+      "last_event_at": "2026-08-30T07:33:13.024000Z",
+      "event_count": 40,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fae6b3b19ffeJKoV40WruU9wFP.jsonl"
+    },
+    {
+      "session_id": "ses_fadccdc5cffeeoL0yCnBKJiBfF",
+      "tool": "opencode",
+      "started_at": "2026-08-30T10:24:38.316000Z",
+      "last_event_at": "2026-08-30T10:26:58.651000Z",
+      "event_count": 52,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fadccdc5cffeeoL0yCnBKJiBfF.jsonl"
+    },
+    {
+      "session_id": "ses_fadc106ebffeAZb6sd58bIoW52",
+      "tool": "opencode",
+      "started_at": "2026-08-30T10:37:33.896000Z",
+      "last_event_at": "2026-08-30T10:38:34.758000Z",
+      "event_count": 33,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fadc106ebffeAZb6sd58bIoW52.jsonl"
+    },
+    {
+      "session_id": "ses_fadc10155ffel7AE1R5MdFjsoe",
+      "tool": "opencode",
+      "started_at": "2026-08-30T10:37:35.307000Z",
+      "last_event_at": "2026-08-30T10:39:31.751000Z",
+      "event_count": 41,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fadc10155ffel7AE1R5MdFjsoe.jsonl"
+    },
+    {
+      "session_id": "ses_fad484064ffeJtdGn2Y7RGXq9k",
+      "tool": "opencode",
+      "started_at": "2026-08-30T12:49:29.243000Z",
+      "last_event_at": "2026-08-30T12:50:59.970000Z",
+      "event_count": 40,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad484064ffeJtdGn2Y7RGXq9k.jsonl"
+    },
+    {
+      "session_id": "ses_fad483e22ffe2er1jnnJtZdFog",
+      "tool": "opencode",
+      "started_at": "2026-08-30T12:49:29.621000Z",
+      "last_event_at": "2026-08-30T12:51:17.350000Z",
+      "event_count": 49,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad483e22ffe2er1jnnJtZdFog.jsonl"
+    },
+    {
+      "session_id": "ses_fad1d456cffemsAaq8pSFs2zUO",
+      "tool": "opencode",
+      "started_at": "2026-08-30T13:36:25.975000Z",
+      "last_event_at": "2026-08-30T13:38:02.593000Z",
+      "event_count": 59,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad1d456cffemsAaq8pSFs2zUO.jsonl"
+    },
+    {
+      "session_id": "ses_fad1d3561ffe6op4wPfZ71Krca",
+      "tool": "opencode",
+      "started_at": "2026-08-30T13:36:29.927000Z",
+      "last_event_at": "2026-08-30T13:40:38.419000Z",
+      "event_count": 61,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad1d3561ffe6op4wPfZ71Krca.jsonl"
+    },
+    {
+      "session_id": "ses_fad1d2d9affe7RD60WZ0eE802F",
+      "tool": "opencode",
+      "started_at": "2026-08-30T13:36:31.924000Z",
+      "last_event_at": "2026-08-30T13:43:28.098000Z",
+      "event_count": 72,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad1d2d9affe7RD60WZ0eE802F.jsonl"
+    },
+    {
+      "session_id": "ses_fad1d25cbffeG60XaH3svvfRIF",
+      "tool": "opencode",
+      "started_at": "2026-08-30T13:36:33.870000Z",
+      "last_event_at": "2026-08-30T13:39:42.556000Z",
+      "event_count": 67,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad1d25cbffeG60XaH3svvfRIF.jsonl"
+    },
+    {
+      "session_id": "ses_fad1d23e8ffebeXPSDwwCa2lFQ",
+      "tool": "opencode",
+      "started_at": "2026-08-30T13:36:34.333000Z",
+      "last_event_at": "2026-08-30T13:37:59.436000Z",
+      "event_count": 27,
+      "file_path": "logs/lladlam/2026-08-30/opencode__ses_fad1d23e8ffebeXPSDwwCa2lFQ.jsonl"
+    },
+    {
+      "session_id": "ses_f805d0df6ffeHUNLIsfYds08fy",
+      "tool": "opencode",
+      "started_at": "2026-09-08T06:09:40.450000Z",
+      "last_event_at": "2026-09-08T06:14:09.033000Z",
+      "event_count": 24,
+      "file_path": "logs/lladlam/2026-09-08/opencode__ses_f805d0df6ffeHUNLIsfYds08fy.jsonl"
+    },
+    {
+      "session_id": "ses_f805682aeffe0qNm0E3iLJxEJ3",
+      "tool": "opencode",
+      "started_at": "2026-09-08T06:16:49.250000Z",
+      "last_event_at": "2026-09-08T06:19:50.204000Z",
+      "event_count": 12,
+      "file_path": "logs/lladlam/2026-09-08/opencode__ses_f805682aeffe0qNm0E3iLJxEJ3.jsonl"
+    },
+    {
+      "session_id": "ses_-ffe5f6e8acc4fffeKkugQLJXF",
+      "tool": "opencode",
+      "started_at": "2026-09-11T17:12:53.235000Z",
+      "last_event_at": "2026-09-11T17:26:09.444000Z",
+      "event_count": 44,
+      "file_path": "logs/lladlam/2026-09-12/opencode__ses_-ffe5f6e8acc4fffeKkugQLJXF.jsonl"
+    },
+    {
+      "session_id": "ses_f699772b4ffeZjeiXm90WS7vdY",
+      "tool": "opencode",
+      "started_at": "2026-09-12T16:17:10.129000Z",
+      "last_event_at": "2026-09-12T16:17:17.497000Z",
+      "event_count": 2,
+      "file_path": "logs/lladlam/2026-09-13/opencode__ses_f699772b4ffeZjeiXm90WS7vdY.jsonl"
     }
   ]
 }
