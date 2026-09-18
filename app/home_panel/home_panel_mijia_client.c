@@ -28,10 +28,10 @@
 #define MIJIA_DELTA_RESPONSE_SIZE    16384
 #define MIJIA_LOGIN_POLL_SECONDS     2
 #define MIJIA_LOGIN_MAX_POLLS        90
-#define MIJIA_CLIENT_THREAD_STACK    16384
-#define MIJIA_COMMAND_THREAD_STACK   16384
-#define MIJIA_AGENT_THREAD_STACK     12288
-#define MIJIA_BOARD_AGENT_THREAD_STACK 16384
+#define MIJIA_CLIENT_THREAD_STACK    24576
+#define MIJIA_COMMAND_THREAD_STACK   20480
+#define MIJIA_AGENT_THREAD_STACK     20480
+#define MIJIA_BOARD_AGENT_THREAD_STACK 24576
 #define MIJIA_BOARD_AGENT_RESPONSE_SIZE 8192
 #define MIJIA_BOARD_AGENT_MAX_PROPERTIES 32
 #define MIJIA_AGENT_PENDING_SECONDS  20
@@ -39,10 +39,16 @@
 #define MIJIA_QR_WIRE_HEADER_SIZE    12
 #define MIJIA_QR_WIDTH               240
 #define MIJIA_QR_HEIGHT              240
-#define MIJIA_QR_STRIDE              (MIJIA_QR_WIDTH * 2)
-#define MIJIA_QR_DATA_SIZE           (MIJIA_QR_STRIDE * MIJIA_QR_HEIGHT)
-#define MIJIA_QR_WIRE_SIZE           (MIJIA_QR_WIRE_HEADER_SIZE + \
-                                      MIJIA_QR_DATA_SIZE)
+/* Wire format from /api/login/qr.i1 is HQR1: a 12-byte header, an 8-byte
+ * palette, then packed 1-bit rows padded to a 32-byte stride (~7.7 KB total).
+ * The panel renders RGB565, so the firmware expands it once into the buffer
+ * below instead of the ~115 KB RGB565 transfer. */
+#define MIJIA_QR_WIRE_STRIDE         32
+#define MIJIA_QR_WIRE_BITMAP_SIZE    (MIJIA_QR_WIRE_STRIDE * MIJIA_QR_HEIGHT)
+#define MIJIA_QR_WIRE_SIZE           (MIJIA_QR_WIRE_HEADER_SIZE + 8 + \
+                                      MIJIA_QR_WIRE_BITMAP_SIZE)
+#define MIJIA_QR_RGB_STRIDE          (MIJIA_QR_WIDTH * 2)
+#define MIJIA_QR_DATA_SIZE           (MIJIA_QR_RGB_STRIDE * MIJIA_QR_HEIGHT)
 #define MIJIA_CREDENTIAL_MAGIC        0x4d4a5331u /* MJS1 */
 #define MIJIA_CREDENTIAL_VERSION      1u
 #define MIJIA_RESTORE_RETRY_SECONDS   3
@@ -589,7 +595,7 @@ static int mijia_download_login_qr(const char *session_id,
     }
 
   length = snprintf(path, sizeof(path),
-                    "/api/login/qr.rgb565?session_id=%s", session_id);
+                    "/api/login/qr.i1?session_id=%s", session_id);
   if (length < 0 || (size_t)length >= sizeof(path))
     {
       free(wire_data);
@@ -617,7 +623,10 @@ static int mijia_download_login_qr(const char *session_id,
   context.sink_callback = mijia_binary_sink;
   context.sink_callback_arg = &sink;
   context.timeout_sec = CONFIG_D13X_HOME_PANEL_MIJIA_TIMEOUT;
+  syslog(LOG_INFO, "[HOME][MIJIA] qr GET start\n");
   ret = webclient_perform(&context);
+  syslog(LOG_INFO, "[HOME][MIJIA] qr GET done ret=%d status=%u bytes=%u\n",
+         ret, context.http_status, (unsigned int)sink.length);
   if (ret >= 0 && (context.http_status < 200 || context.http_status >= 300))
     {
       ret = -EPROTO;
@@ -625,12 +634,12 @@ static int mijia_download_login_qr(const char *session_id,
 
   if (ret >= 0 &&
       (sink.length != MIJIA_QR_WIRE_SIZE ||
-       memcmp(wire_data, "HQR2", 4) != 0 ||
+       memcmp(wire_data, "HQR1", 4) != 0 ||
        wire_data[4] != 0 || wire_data[5] != MIJIA_QR_WIDTH ||
        wire_data[6] != 0 || wire_data[7] != MIJIA_QR_HEIGHT ||
-       wire_data[8] != (MIJIA_QR_STRIDE >> 8) ||
-       wire_data[9] != (MIJIA_QR_STRIDE & 0xff) ||
-       wire_data[10] != 2 || wire_data[11] != 0))
+       wire_data[8] != (MIJIA_QR_WIRE_STRIDE >> 8) ||
+       wire_data[9] != (MIJIA_QR_WIRE_STRIDE & 0xff) ||
+       wire_data[10] != 1 || wire_data[11] != 0))
     {
       ret = -EBADMSG;
     }
@@ -644,14 +653,29 @@ static int mijia_download_login_qr(const char *session_id,
         }
       else
         {
-          memcpy(g_mijia_qr_data,
-                 wire_data + MIJIA_QR_WIRE_HEADER_SIZE,
-                 MIJIA_QR_DATA_SIZE);
+          const uint8_t *bits = wire_data + MIJIA_QR_WIRE_HEADER_SIZE + 8;
+          uint8_t *dst = g_mijia_qr_data;
+          unsigned int x;
+          unsigned int y;
+
+          for (y = 0; y < MIJIA_QR_HEIGHT; y++)
+            {
+              for (x = 0; x < MIJIA_QR_WIDTH; x++)
+                {
+                  uint8_t byte = bits[y * MIJIA_QR_WIRE_STRIDE + (x >> 3)];
+                  uint8_t on = (byte >> (7 - (x & 7))) & 1u;
+                  uint8_t *px = dst + y * MIJIA_QR_RGB_STRIDE + x * 2;
+
+                  px[0] = on ? 0xff : 0x00;
+                  px[1] = on ? 0xff : 0x00;
+                }
+            }
+
           g_mijia.qr_size = MIJIA_QR_DATA_SIZE;
           g_mijia.snapshot.qr_size = MIJIA_QR_DATA_SIZE;
           g_mijia.snapshot.qr_revision = ++g_mijia.next_qr_revision;
           syslog(LOG_INFO,
-                 "[HOME][MIJIA] qr downloaded format=RGB565 %ux%u bytes=%u\n",
+                 "[HOME][MIJIA] qr HQR1 expanded to RGB565 %ux%u bytes=%u\n",
                  MIJIA_QR_WIDTH, MIJIA_QR_HEIGHT,
                  (unsigned int)MIJIA_QR_DATA_SIZE);
         }
