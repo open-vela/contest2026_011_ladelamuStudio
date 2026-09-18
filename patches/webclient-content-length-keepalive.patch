@@ -1,0 +1,26 @@
+diff --git a/netutils/webclient/webclient.c b/netutils/webclient/webclient.c
+index d16db2f..d994265 100644
+--- a/netutils/webclient/webclient.c
++++ b/netutils/webclient/webclient.c
+@@ -2107,6 +2107,21 @@ int webclient_perform(FAR struct webclient_context *ctx)
+ 
+                       ws->offset += received;
+ 
++                      /* Finish as soon as the declared Content-Length body
++                       * has arrived, so a keep-alive connection can be reused
++                       * instead of blocking until the peer closes it.
++                       */
++
++                      if ((ws->internal_flags &
++                           WGET_FLAG_GOT_CONTENT_LENGTH) != 0 &&
++                          ws->received_body_len >=
++                          ws->expected_resp_body_len)
++                        {
++                          ws->state = WEBCLIENT_STATE_CLOSE;
++                          ws->redirected = 0;
++                          break;
++                        }
++
+                       /* The buffer swapping API doesn't work for
+                        * HTTP 1.1 chunked transfer because the buffer here
+                        * might already contain the next chunk header.

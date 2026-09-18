@@ -114,6 +114,49 @@ static void d13x_tls_session_apply(mbedtls_ssl_context *ssl)
   pthread_mutex_unlock(&g_tls_session_lock);
 }
 
+/* Keep-alive connection pool: one idle TLS connection is retained so the next
+ * request to the same host reuses it instead of paying a new handshake.
+ */
+
+static pthread_mutex_t g_conn_pool_lock = PTHREAD_MUTEX_INITIALIZER;
+static struct webclient_tls_connection *g_conn_pool;
+static char g_conn_pool_host[96];
+static unsigned int g_conn_pool_port;
+
+static bool d13x_tls_conn_alive(int fd)
+{
+  char probe;
+  ssize_t r = recv(fd, &probe, 1, MSG_PEEK | MSG_DONTWAIT);
+
+  if (r == 0)
+    {
+      return false;
+    }
+
+  if (r < 0)
+    {
+      return errno == EAGAIN || errno == EWOULDBLOCK;
+    }
+
+  /* Pending bytes are expected on a TLS socket (for example a session ticket
+   * queued by the peer right after the handshake), so r > 0 means the
+   * connection is still usable.
+   */
+
+  return true;
+}
+
+static void d13x_tls_conn_free(struct webclient_tls_connection *conn)
+{
+  mbedtls_x509_crt_free(&conn->ca);
+  mbedtls_ctr_drbg_free(&conn->drbg);
+  mbedtls_entropy_free(&conn->entropy);
+  mbedtls_ssl_config_free(&conn->config);
+  mbedtls_ssl_free(&conn->ssl);
+  mbedtls_net_free(&conn->net);
+  free(conn);
+}
+
 struct d13x_ce_task_s
 {
   uint32_t words[16];
@@ -508,6 +551,44 @@ static int https_connect(void *ctx, const char *hostname, const char *port,
 
   (void)ctx;
 
+  {
+    unsigned int want_port = (unsigned int)atoi(port);
+    struct webclient_tls_connection *reuse = NULL;
+    struct webclient_tls_connection *stale = NULL;
+
+    pthread_mutex_lock(&g_conn_pool_lock);
+    if (g_conn_pool != NULL)
+      {
+        if (g_conn_pool_port == want_port &&
+            strcmp(g_conn_pool_host, hostname) == 0 &&
+            d13x_tls_conn_alive(g_conn_pool->net.fd))
+          {
+            reuse = g_conn_pool;
+          }
+        else
+          {
+            stale = g_conn_pool;
+          }
+
+        g_conn_pool = NULL;
+      }
+
+    pthread_mutex_unlock(&g_conn_pool_lock);
+
+    if (stale != NULL)
+      {
+        d13x_tls_conn_free(stale);
+      }
+
+    if (reuse != NULL)
+      {
+        reuse->idle_timeout_sec = timeout_second != 0 ? timeout_second : 60;
+        reuse->recv_deadline = time(NULL) + (time_t)reuse->idle_timeout_sec;
+        *connp = reuse;
+        return 0;
+      }
+  }
+
   conn = calloc(1, sizeof(*conn));
   if (conn == NULL)
     {
@@ -759,15 +840,31 @@ static ssize_t https_recv(void *ctx, struct webclient_tls_connection *conn,
 static int https_close(void *ctx, struct webclient_tls_connection *conn)
 {
   (void)ctx;
-  (void)mbedtls_ssl_close_notify(&conn->ssl);
+
+  /* Keep the session ticket, then return the connection to the pool instead of
+   * tearing it down.  Do not send close_notify here: that closes the TLS
+   * session and defeats reuse.
+   */
+
   d13x_tls_session_save(&conn->ssl);
-  mbedtls_x509_crt_free(&conn->ca);
-  mbedtls_ctr_drbg_free(&conn->drbg);
-  mbedtls_entropy_free(&conn->entropy);
-  mbedtls_ssl_config_free(&conn->config);
-  mbedtls_ssl_free(&conn->ssl);
-  mbedtls_net_free(&conn->net);
-  free(conn);
+
+  if (d13x_tls_conn_alive(conn->net.fd))
+    {
+      pthread_mutex_lock(&g_conn_pool_lock);
+      if (g_conn_pool == NULL)
+        {
+          g_conn_pool = conn;
+          strncpy(g_conn_pool_host, conn->host, sizeof(g_conn_pool_host) - 1);
+          g_conn_pool_host[sizeof(g_conn_pool_host) - 1] = '\0';
+          g_conn_pool_port = conn->port;
+          pthread_mutex_unlock(&g_conn_pool_lock);
+          return 0;
+        }
+
+      pthread_mutex_unlock(&g_conn_pool_lock);
+    }
+
+  d13x_tls_conn_free(conn);
   return 0;
 }
 

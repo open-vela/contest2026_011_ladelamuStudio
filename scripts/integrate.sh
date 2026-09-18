@@ -57,6 +57,15 @@ fi
 # archive again and overwrite the NuttX compatibility patch.
 touch "$LVGL_DIR/lvgl"
 
+# Let the NuttX webclient finish a response as soon as its declared
+# Content-Length body has arrived, so the Mijia client can reuse the
+# TLS connection across requests instead of paying a handshake each time.
+if ! grep -q 'keep-alive connection can be reused' \
+  "$APPS_DIR/netutils/webclient/webclient.c"; then
+  patch -d "$APPS_DIR" -p1 \
+    < "$REPO_ROOT/patches/webclient-content-length-keepalive.patch"
+fi
+
 install -d \
   "$APPS_DIR/industry/d13x_home_panel" \
   "$VENDOR_DIR/boards/d13x-hengshan-pi" \

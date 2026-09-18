@@ -258,12 +258,12 @@ static int mijia_http_request(const char *method, const char *path,
   {
     "Accept: application/json",
     "Content-Type: application/json",
-    "Connection: close"
+    "Connection: keep-alive"
   };
   static const char *get_headers[] =
   {
     "Accept: application/json",
-    "Connection: close"
+    "Connection: keep-alive"
   };
   struct webclient_context context;
   struct mijia_response_s response;
@@ -353,7 +353,7 @@ static int mijia_authorized_post(const char *token, const char *path,
   headers[0] = "Accept: application/json";
   headers[1] = "Content-Type: application/json";
   headers[2] = authorization;
-  headers[3] = "Connection: close";
+  headers[3] = "Connection: keep-alive";
 
   memset(&response, 0, sizeof(response));
   response.data = response_data;
@@ -407,7 +407,7 @@ static int mijia_authorized_get(const char *token, const char *path,
            "Authorization: Bearer %s", token);
   headers[0] = "Accept: application/json";
   headers[1] = authorization;
-  headers[2] = "Connection: close";
+  headers[2] = "Connection: keep-alive";
   memset(&response, 0, sizeof(response));
   response.data = response_data;
   response.capacity = response_capacity;
@@ -577,7 +577,7 @@ static int mijia_download_login_qr(const char *session_id,
   static const char *headers[] =
   {
     "Accept: application/octet-stream",
-    "Connection: close"
+    "Connection: keep-alive"
   };
   struct webclient_context context;
   struct mijia_response_s sink;
@@ -879,7 +879,7 @@ static int mijia_set_vault_password(const char *token,
            "Authorization: Bearer %s", token);
   headers[0] = authorization;
   headers[1] = "Content-Type: application/json";
-  headers[2] = "Connection: close";
+  headers[2] = "Connection: keep-alive";
 
   memset(&sink, 0, sizeof(sink));
   sink.data = response;
@@ -1067,7 +1067,7 @@ static int mijia_fetch_family(const char *token, uint32_t generation,
   snprintf(authorization, sizeof(authorization),
            "Authorization: Bearer %s", token);
   headers[0] = authorization;
-  headers[1] = "Connection: close";
+  headers[1] = "Connection: keep-alive";
   sink.data = response;
   sink.capacity = CONFIG_D13X_HOME_PANEL_MIJIA_MAX_RESPONSE;
   response[0] = '\0';
@@ -1247,7 +1247,7 @@ static int mijia_wait_for_changes(const char *token, uint32_t generation,
   snprintf(authorization, sizeof(authorization),
            "Authorization: Bearer %s", token);
   headers[0] = authorization;
-  headers[1] = "Connection: close";
+  headers[1] = "Connection: keep-alive";
   sink.data = response;
   sink.capacity = MIJIA_DELTA_RESPONSE_SIZE;
   response[0] = '\0';
