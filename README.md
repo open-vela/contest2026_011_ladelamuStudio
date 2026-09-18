@@ -1,6 +1,6 @@
 # OpenVela D13x 衡山派家庭中控屏
 
-当前候选版本：**2.2.0.0**。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
+当前候选版本：**2.2.0.1**。版本变化见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 一、作品简介
 
@@ -228,10 +228,10 @@ LVGL BinFont 读取，不在运行时解析 TTF 或执行浮点光栅化。BinFo
 | 米家扫码登录 | 已验证 | 米家 App 扫码确认、令牌领取、家庭与设备统计正常 |
 | 米家服务端 | 已验证 | `https://mi.lladlam.top` 的健康检查、扫码登录、同步和主动智能代理正常 |
 
-当前候选镜像 `2.2.0.0` SHA-256：
+当前候选镜像 `2.2.0.1` SHA-256：
 
 ```text
-f3d2bbc8231d4967fbf2d5d3940d9c72805231b9c6fea04c1c6a7d3b5c3160c5
+PENDING_CI_RELEASE_SHA
 ```
 
 ## 八、许可证
